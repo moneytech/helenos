@@ -34,7 +34,7 @@
  * @file
  */
 
-#include <cap.h>
+#include <capa.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 	display_blocks = false;
 
 	/* Parse command-line options */
-	while ((optres = getopt(argc, argv, ":ubh")) != -1) {
+	while ((optres = getopt(argc, argv, "ubh")) != -1) {
 		switch (optres) {
 		case 'h':
 			print_usage();
@@ -77,12 +77,6 @@ int main(int argc, char *argv[])
 
 		case 'b':
 			display_blocks = true;
-			break;
-
-		case ':':
-			fprintf(stderr, "Option -%c requires an operand\n",
-			    optopt);
-			errflg++;
 			break;
 
 		case '?':
@@ -129,11 +123,11 @@ int main(int argc, char *argv[])
 
 static errno_t size_to_human_readable(uint64_t nblocks, size_t block_size, char **rptr)
 {
-	cap_spec_t cap;
+	capa_spec_t capa;
 
-	cap_from_blocks(nblocks, block_size, &cap);
-	cap_simplify(&cap);
-	return cap_format(&cap, rptr);
+	capa_from_blocks(nblocks, block_size, &capa);
+	capa_simplify(&capa);
+	return capa_format(&capa, rptr);
 }
 
 static void print_header(void)

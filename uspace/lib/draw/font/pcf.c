@@ -43,9 +43,8 @@
 #include <stdlib.h>
 #include <str.h>
 
-#include "pcf.h"
-#include "../drawctx.h"
-#include "bitmap_backend.h"
+#include <draw/font.h>
+#include <draw/drawctx.h>
 
 #define PCF_TABLE_ACCELERATORS 0x02
 #define PCF_TABLE_METRICS      0x04
@@ -143,7 +142,7 @@ static int16_t compressed2int(uint8_t compressed)
 	return ret;
 }
 
-static errno_t pcf_resolve_glyph(void *opaque_data, const wchar_t chr,
+static errno_t pcf_resolve_glyph(void *opaque_data, const char32_t chr,
     glyph_id_t *glyph_id)
 {
 	pcf_data_t *data = (pcf_data_t *) opaque_data;

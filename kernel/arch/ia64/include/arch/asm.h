@@ -44,14 +44,14 @@
 #define IO_SPACE_BOUNDARY       ((void *) (64 * 1024))
 
 /** Map the I/O port address to a legacy I/O address. */
-NO_TRACE static inline uintptr_t p2a(volatile void *p)
+_NO_TRACE static inline uintptr_t p2a(volatile void *p)
 {
 	uintptr_t prt = (uintptr_t) p;
 
 	return legacyio_virt_base + (((prt >> 2) << 12) | (prt & 0xfff));
 }
 
-NO_TRACE static inline void pio_write_8(ioport8_t *port, uint8_t v)
+_NO_TRACE static inline void pio_write_8(ioport8_t *port, uint8_t v)
 {
 	if (port < (ioport8_t *) IO_SPACE_BOUNDARY)
 		*((ioport8_t *) p2a(port)) = v;
@@ -65,7 +65,7 @@ NO_TRACE static inline void pio_write_8(ioport8_t *port, uint8_t v)
 	);
 }
 
-NO_TRACE static inline void pio_write_16(ioport16_t *port, uint16_t v)
+_NO_TRACE static inline void pio_write_16(ioport16_t *port, uint16_t v)
 {
 	if (port < (ioport16_t *) IO_SPACE_BOUNDARY)
 		*((ioport16_t *) p2a(port)) = v;
@@ -79,7 +79,7 @@ NO_TRACE static inline void pio_write_16(ioport16_t *port, uint16_t v)
 	);
 }
 
-NO_TRACE static inline void pio_write_32(ioport32_t *port, uint32_t v)
+_NO_TRACE static inline void pio_write_32(ioport32_t *port, uint32_t v)
 {
 	if (port < (ioport32_t *) IO_SPACE_BOUNDARY)
 		*((ioport32_t *) p2a(port)) = v;
@@ -93,7 +93,7 @@ NO_TRACE static inline void pio_write_32(ioport32_t *port, uint32_t v)
 	);
 }
 
-NO_TRACE static inline uint8_t pio_read_8(ioport8_t *port)
+_NO_TRACE static inline uint8_t pio_read_8(ioport8_t *port)
 {
 	uint8_t v;
 
@@ -115,7 +115,7 @@ NO_TRACE static inline uint8_t pio_read_8(ioport8_t *port)
 	return v;
 }
 
-NO_TRACE static inline uint16_t pio_read_16(ioport16_t *port)
+_NO_TRACE static inline uint16_t pio_read_16(ioport16_t *port)
 {
 	uint16_t v;
 
@@ -137,7 +137,7 @@ NO_TRACE static inline uint16_t pio_read_16(ioport16_t *port)
 	return v;
 }
 
-NO_TRACE static inline uint32_t pio_read_32(ioport32_t *port)
+_NO_TRACE static inline uint32_t pio_read_32(ioport32_t *port)
 {
 	uint32_t v;
 
@@ -159,30 +159,12 @@ NO_TRACE static inline uint32_t pio_read_32(ioport32_t *port)
 	return v;
 }
 
-/** Return base address of current memory stack.
- *
- * The memory stack is assumed to be STACK_SIZE / 2 long. Note that there is
- * also the RSE stack, which takes up the upper half of STACK_SIZE.
- * The memory stack must start on page boundary.
- */
-NO_TRACE static inline uintptr_t get_stack_base(void)
-{
-	uint64_t value;
-
-	asm volatile (
-	    "mov %[value] = r12"
-	    : [value] "=r" (value)
-	);
-
-	return (value & (~(STACK_SIZE / 2 - 1)));
-}
-
 /** Return Processor State Register.
  *
  * @return PSR.
  *
  */
-NO_TRACE static inline uint64_t psr_read(void)
+_NO_TRACE static inline uint64_t psr_read(void)
 {
 	uint64_t v;
 
@@ -199,7 +181,7 @@ NO_TRACE static inline uint64_t psr_read(void)
  * @return Return location of interruption vector table.
  *
  */
-NO_TRACE static inline uint64_t iva_read(void)
+_NO_TRACE static inline uint64_t iva_read(void)
 {
 	uint64_t v;
 
@@ -216,7 +198,7 @@ NO_TRACE static inline uint64_t iva_read(void)
  * @param v New location of interruption vector table.
  *
  */
-NO_TRACE static inline void iva_write(uint64_t v)
+_NO_TRACE static inline void iva_write(uint64_t v)
 {
 	asm volatile (
 	    "mov cr.iva = %[value]\n"
@@ -230,7 +212,7 @@ NO_TRACE static inline void iva_write(uint64_t v)
  *         interrupt vector.
  *
  */
-NO_TRACE static inline uint64_t ivr_read(void)
+_NO_TRACE static inline uint64_t ivr_read(void)
 {
 	uint64_t v;
 
@@ -242,7 +224,7 @@ NO_TRACE static inline uint64_t ivr_read(void)
 	return v;
 }
 
-NO_TRACE static inline uint64_t cr64_read(void)
+_NO_TRACE static inline uint64_t cr64_read(void)
 {
 	uint64_t v;
 
@@ -259,7 +241,7 @@ NO_TRACE static inline uint64_t cr64_read(void)
  * @param v New counter value.
  *
  */
-NO_TRACE static inline void itc_write(uint64_t v)
+_NO_TRACE static inline void itc_write(uint64_t v)
 {
 	asm volatile (
 	    "mov ar.itc = %[value]\n"
@@ -272,7 +254,7 @@ NO_TRACE static inline void itc_write(uint64_t v)
  * @return Current counter value.
  *
  */
-NO_TRACE static inline uint64_t itc_read(void)
+_NO_TRACE static inline uint64_t itc_read(void)
 {
 	uint64_t v;
 
@@ -289,7 +271,7 @@ NO_TRACE static inline uint64_t itc_read(void)
  * @param v New match value.
  *
  */
-NO_TRACE static inline void itm_write(uint64_t v)
+_NO_TRACE static inline void itm_write(uint64_t v)
 {
 	asm volatile (
 	    "mov cr.itm = %[value]\n"
@@ -302,7 +284,7 @@ NO_TRACE static inline void itm_write(uint64_t v)
  * @return Match value.
  *
  */
-NO_TRACE static inline uint64_t itm_read(void)
+_NO_TRACE static inline uint64_t itm_read(void)
 {
 	uint64_t v;
 
@@ -319,7 +301,7 @@ NO_TRACE static inline uint64_t itm_read(void)
  * @return Current vector and mask bit.
  *
  */
-NO_TRACE static inline uint64_t itv_read(void)
+_NO_TRACE static inline uint64_t itv_read(void)
 {
 	uint64_t v;
 
@@ -336,7 +318,7 @@ NO_TRACE static inline uint64_t itv_read(void)
  * @param v New vector and mask bit.
  *
  */
-NO_TRACE static inline void itv_write(uint64_t v)
+_NO_TRACE static inline void itv_write(uint64_t v)
 {
 	asm volatile (
 	    "mov cr.itv = %[value]\n"
@@ -349,7 +331,7 @@ NO_TRACE static inline void itv_write(uint64_t v)
  * @param v This value is ignored.
  *
  */
-NO_TRACE static inline void eoi_write(uint64_t v)
+_NO_TRACE static inline void eoi_write(uint64_t v)
 {
 	asm volatile (
 	    "mov cr.eoi = %[value]\n"
@@ -362,7 +344,7 @@ NO_TRACE static inline void eoi_write(uint64_t v)
  * @return Current value of TPR.
  *
  */
-NO_TRACE static inline uint64_t tpr_read(void)
+_NO_TRACE static inline uint64_t tpr_read(void)
 {
 	uint64_t v;
 
@@ -379,7 +361,7 @@ NO_TRACE static inline uint64_t tpr_read(void)
  * @param v New value of TPR.
  *
  */
-NO_TRACE static inline void tpr_write(uint64_t v)
+_NO_TRACE static inline void tpr_write(uint64_t v)
 {
 	asm volatile (
 	    "mov cr.tpr = %[value]\n"
@@ -395,7 +377,7 @@ NO_TRACE static inline void tpr_write(uint64_t v)
  * @return Old interrupt priority level.
  *
  */
-NO_TRACE static ipl_t interrupts_disable(void)
+_NO_TRACE static ipl_t interrupts_disable(void)
 {
 	uint64_t v;
 
@@ -417,7 +399,7 @@ NO_TRACE static ipl_t interrupts_disable(void)
  * @return Old interrupt priority level.
  *
  */
-NO_TRACE static ipl_t interrupts_enable(void)
+_NO_TRACE static ipl_t interrupts_enable(void)
 {
 	uint64_t v;
 
@@ -440,7 +422,7 @@ NO_TRACE static ipl_t interrupts_enable(void)
  * @param ipl Saved interrupt priority level.
  *
  */
-NO_TRACE static inline void interrupts_restore(ipl_t ipl)
+_NO_TRACE static inline void interrupts_restore(ipl_t ipl)
 {
 	if (ipl & PSR_I_MASK)
 		(void) interrupts_enable();
@@ -453,7 +435,7 @@ NO_TRACE static inline void interrupts_restore(ipl_t ipl)
  * @return PSR.
  *
  */
-NO_TRACE static inline ipl_t interrupts_read(void)
+_NO_TRACE static inline ipl_t interrupts_read(void)
 {
 	return (ipl_t) psr_read();
 }
@@ -463,13 +445,13 @@ NO_TRACE static inline ipl_t interrupts_read(void)
  * @return True if interrupts are disabled.
  *
  */
-NO_TRACE static inline bool interrupts_disabled(void)
+_NO_TRACE static inline bool interrupts_disabled(void)
 {
 	return !(psr_read() & PSR_I_MASK);
 }
 
 /** Disable protection key checking. */
-NO_TRACE static inline void pk_disable(void)
+_NO_TRACE static inline void pk_disable(void)
 {
 	asm volatile (
 	    "rsm %[mask]\n"

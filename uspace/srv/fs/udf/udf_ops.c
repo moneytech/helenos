@@ -61,9 +61,6 @@
 #include "udf_file.h"
 #include "udf_osta.h"
 
-/** Mutex protecting the list of cached free nodes. */
-static FIBRIL_MUTEX_INITIALIZE(ffn_mutex);
-
 /** List of cached free nodes. */
 static LIST_INITIALIZE(ffn_list);
 
@@ -330,8 +327,10 @@ static errno_t udf_mounted(service_id_t service_id, const char *opts,
 
 	/* initialize block cache */
 	errno_t rc = block_init(service_id, MAX_SIZE);
-	if (rc != EOK)
+	if (rc != EOK) {
+		free(instance);
 		return rc;
+	}
 
 	rc = fs_instance_create(service_id, instance);
 	if (rc != EOK) {

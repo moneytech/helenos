@@ -32,8 +32,8 @@
 /** @file
  */
 
-#ifndef LIBC_STATS_H_
-#define LIBC_STATS_H_
+#ifndef _LIBC_STATS_H_
+#define _LIBC_STATS_H_
 
 #include <task.h>
 #include <stdint.h>
@@ -51,6 +51,7 @@ extern stats_task_t *stats_get_tasks(size_t *);
 extern stats_task_t *stats_get_task(task_id_t);
 
 extern stats_thread_t *stats_get_threads(size_t *);
+extern stats_ipcc_t *stats_get_ipccs(size_t *);
 
 extern stats_exc_t *stats_get_exceptions(size_t *);
 extern stats_exc_t *stats_get_exception(unsigned int);

@@ -121,7 +121,7 @@ static errno_t pci_get_ids_once(pci_t *pci, sysarg_t method, sysarg_t arg1,
 		return retval;
 	}
 
-	*act_size = IPC_GET_ARG1(answer);
+	*act_size = ipc_get_arg1(&answer);
 	return EOK;
 }
 
@@ -162,9 +162,12 @@ static errno_t pci_get_ids_internal(pci_t *pci, sysarg_t method, sysarg_t arg1,
 			break;
 
 		alloc_size = act_size;
-		ids = realloc(ids, alloc_size);
-		if (ids == NULL)
+		service_id_t *tmp = realloc(ids, alloc_size);
+		if (tmp == NULL) {
+			free(ids);
 			return ENOMEM;
+		}
+		ids = tmp;
 	}
 
 	*count = act_size / sizeof(service_id_t);

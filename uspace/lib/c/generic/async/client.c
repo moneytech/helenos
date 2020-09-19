@@ -94,12 +94,12 @@
  *
  */
 
-#define LIBC_ASYNC_C_
+#define _LIBC_ASYNC_C_
 #include <ipc/ipc.h>
 #include <async.h>
 #include "../private/async.h"
 #include "../private/ns.h"
-#undef LIBC_ASYNC_C_
+#undef _LIBC_ASYNC_C_
 
 #include <ipc/irq.h>
 #include <ipc/event.h>
@@ -215,7 +215,7 @@ void async_reply_received(ipc_call_t *data)
 
 	fibril_rmutex_lock(&message_mutex);
 
-	msg->retval = IPC_GET_RETVAL(*data);
+	msg->retval = ipc_get_retval(data);
 
 	/* Copy data inside lock, just in case the call was detached */
 	if ((msg->dataptr) && (data))
@@ -248,7 +248,7 @@ void async_reply_received(ipc_call_t *data)
  * @return Hash of the sent message or 0 on error.
  *
  */
-aid_t async_send_fast(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+static aid_t async_send_fast(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
     sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, ipc_call_t *dataptr)
 {
 	if (exch == NULL)
@@ -288,7 +288,7 @@ aid_t async_send_fast(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
  * @return Hash of the sent message or 0 on error.
  *
  */
-aid_t async_send_slow(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+static aid_t async_send_slow(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
     sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t arg5,
     ipc_call_t *dataptr)
 {
@@ -309,6 +309,43 @@ aid_t async_send_slow(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
 	}
 
 	return (aid_t) msg;
+}
+
+aid_t async_send_0(async_exch_t *exch, sysarg_t imethod, ipc_call_t *dataptr)
+{
+	return async_send_fast(exch, imethod, 0, 0, 0, 0, dataptr);
+}
+
+aid_t async_send_1(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    ipc_call_t *dataptr)
+{
+	return async_send_fast(exch, imethod, arg1, 0, 0, 0, dataptr);
+}
+
+aid_t async_send_2(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, ipc_call_t *dataptr)
+{
+	return async_send_fast(exch, imethod, arg1, arg2, 0, 0, dataptr);
+}
+
+aid_t async_send_3(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, ipc_call_t *dataptr)
+{
+	return async_send_fast(exch, imethod, arg1, arg2, arg3, 0, dataptr);
+}
+
+aid_t async_send_4(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, ipc_call_t *dataptr)
+{
+	return async_send_fast(exch, imethod, arg1, arg2, arg3, arg4, dataptr);
+}
+
+aid_t async_send_5(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t arg5,
+    ipc_call_t *dataptr)
+{
+	return async_send_slow(exch, imethod, arg1, arg2, arg3, arg4, arg5,
+	    dataptr);
 }
 
 /** Wait for a message sent by the async framework.
@@ -433,9 +470,9 @@ void async_forget(aid_t amsgid)
  * @return Return code of the reply or an error code.
  *
  */
-errno_t async_req_fast(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
-    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t *r1, sysarg_t *r2,
-    sysarg_t *r3, sysarg_t *r4, sysarg_t *r5)
+static errno_t async_req_fast(async_exch_t *exch, sysarg_t imethod,
+    sysarg_t arg1, sysarg_t arg2, sysarg_t arg3, sysarg_t arg4,
+    sysarg_t *r1, sysarg_t *r2, sysarg_t *r3, sysarg_t *r4, sysarg_t *r5)
 {
 	if (exch == NULL)
 		return ENOENT;
@@ -448,19 +485,19 @@ errno_t async_req_fast(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
 	async_wait_for(aid, &rc);
 
 	if (r1)
-		*r1 = IPC_GET_ARG1(result);
+		*r1 = ipc_get_arg1(&result);
 
 	if (r2)
-		*r2 = IPC_GET_ARG2(result);
+		*r2 = ipc_get_arg2(&result);
 
 	if (r3)
-		*r3 = IPC_GET_ARG3(result);
+		*r3 = ipc_get_arg3(&result);
 
 	if (r4)
-		*r4 = IPC_GET_ARG4(result);
+		*r4 = ipc_get_arg4(&result);
 
 	if (r5)
-		*r5 = IPC_GET_ARG5(result);
+		*r5 = ipc_get_arg5(&result);
 
 	return rc;
 }
@@ -485,9 +522,9 @@ errno_t async_req_fast(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
  * @return Return code of the reply or an error code.
  *
  */
-errno_t async_req_slow(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
-    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t arg5, sysarg_t *r1,
-    sysarg_t *r2, sysarg_t *r3, sysarg_t *r4, sysarg_t *r5)
+static errno_t async_req_slow(async_exch_t *exch, sysarg_t imethod,
+    sysarg_t arg1, sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t arg5,
+    sysarg_t *r1, sysarg_t *r2, sysarg_t *r3, sysarg_t *r4, sysarg_t *r5)
 {
 	if (exch == NULL)
 		return ENOENT;
@@ -500,21 +537,272 @@ errno_t async_req_slow(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
 	async_wait_for(aid, &rc);
 
 	if (r1)
-		*r1 = IPC_GET_ARG1(result);
+		*r1 = ipc_get_arg1(&result);
 
 	if (r2)
-		*r2 = IPC_GET_ARG2(result);
+		*r2 = ipc_get_arg2(&result);
 
 	if (r3)
-		*r3 = IPC_GET_ARG3(result);
+		*r3 = ipc_get_arg3(&result);
 
 	if (r4)
-		*r4 = IPC_GET_ARG4(result);
+		*r4 = ipc_get_arg4(&result);
 
 	if (r5)
-		*r5 = IPC_GET_ARG5(result);
+		*r5 = ipc_get_arg5(&result);
 
 	return rc;
+}
+
+errno_t async_req_0_0(async_exch_t *exch, sysarg_t imethod)
+{
+	return async_req_fast(exch, imethod, 0, 0, 0, 0, NULL, NULL, NULL, NULL,
+	    NULL);
+}
+
+errno_t async_req_0_1(async_exch_t *exch, sysarg_t imethod, sysarg_t *r1)
+{
+	return async_req_fast(exch, imethod, 0, 0, 0, 0, r1, NULL, NULL, NULL,
+	    NULL);
+}
+
+errno_t async_req_0_2(async_exch_t *exch, sysarg_t imethod, sysarg_t *r1,
+    sysarg_t *r2)
+{
+	return async_req_fast(exch, imethod, 0, 0, 0, 0, r1, r2, NULL, NULL, NULL);
+}
+
+errno_t async_req_0_3(async_exch_t *exch, sysarg_t imethod, sysarg_t *r1,
+    sysarg_t *r2, sysarg_t *r3)
+{
+	return async_req_fast(exch, imethod, 0, 0, 0, 0, r1, r2, r3, NULL, NULL);
+}
+
+errno_t async_req_0_4(async_exch_t *exch, sysarg_t imethod, sysarg_t *r1,
+    sysarg_t *r2, sysarg_t *r3, sysarg_t *r4)
+{
+	return async_req_fast(exch, imethod, 0, 0, 0, 0, r1, r2, r3, r4, NULL);
+}
+
+errno_t async_req_0_5(async_exch_t *exch, sysarg_t imethod, sysarg_t *r1,
+    sysarg_t *r2, sysarg_t *r3, sysarg_t *r4, sysarg_t *r5)
+{
+	return async_req_fast(exch, imethod, 0, 0, 0, 0, r1, r2, r3, r4, r5);
+}
+
+errno_t async_req_1_0(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1)
+{
+	return async_req_fast(exch, imethod, arg1, 0, 0, 0, NULL, NULL, NULL, NULL,
+	    NULL);
+}
+
+errno_t async_req_1_1(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t *r1)
+{
+	return async_req_fast(exch, imethod, arg1, 0, 0, 0, r1, NULL, NULL, NULL,
+	    NULL);
+}
+
+errno_t async_req_1_2(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t *r1, sysarg_t *r2)
+{
+	return async_req_fast(exch, imethod, arg1, 0, 0, 0, r1, r2, NULL, NULL,
+	    NULL);
+}
+
+errno_t async_req_1_3(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t *r1, sysarg_t *r2, sysarg_t *r3)
+{
+	return async_req_fast(exch, imethod, arg1, 0, 0, 0, r1, r2, r3, NULL,
+	    NULL);
+}
+
+errno_t async_req_1_4(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t *r1, sysarg_t *r2, sysarg_t *r3, sysarg_t *r4)
+{
+	return async_req_fast(exch, imethod, arg1, 0, 0, 0, r1, r2, r3, r4, NULL);
+}
+
+errno_t async_req_1_5(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t *r1, sysarg_t *r2, sysarg_t *r3, sysarg_t *r4, sysarg_t *r5)
+{
+	return async_req_fast(exch, imethod, arg1, 0, 0, 0, r1, r2, r3, r4, r5);
+}
+
+errno_t async_req_2_0(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, 0, 0, NULL, NULL, NULL,
+	    NULL, NULL);
+}
+
+errno_t async_req_2_1(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t *r1)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, 0, 0, r1, NULL, NULL,
+	    NULL, NULL);
+}
+
+errno_t async_req_2_2(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t *r1, sysarg_t *r2)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, 0, 0, r1, r2, NULL,
+	    NULL, NULL);
+}
+
+errno_t async_req_2_3(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t *r1, sysarg_t *r2, sysarg_t *r3)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, 0, 0, r1, r2, r3, NULL,
+	    NULL);
+}
+
+errno_t async_req_2_4(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t *r1, sysarg_t *r2, sysarg_t *r3, sysarg_t *r4)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, 0, 0, r1, r2, r3, r4,
+	    NULL);
+}
+
+errno_t async_req_2_5(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t *r1, sysarg_t *r2, sysarg_t *r3, sysarg_t *r4, sysarg_t *r5)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, 0, 0, r1, r2, r3, r4, r5);
+}
+
+errno_t async_req_3_0(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, 0, NULL, NULL, NULL,
+	    NULL, NULL);
+}
+
+errno_t async_req_3_1(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t *r1)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, 0, r1, NULL, NULL,
+	    NULL, NULL);
+}
+
+errno_t async_req_3_2(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t *r1, sysarg_t *r2)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, 0, r1, r2, NULL,
+	    NULL, NULL);
+}
+
+errno_t async_req_3_3(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t *r1, sysarg_t *r2, sysarg_t *r3)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, 0, r1, r2, r3, NULL,
+	    NULL);
+}
+
+errno_t async_req_3_4(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t *r1, sysarg_t *r2, sysarg_t *r3,
+    sysarg_t *r4)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, 0, r1, r2, r3, r4,
+	    NULL);
+}
+
+errno_t async_req_3_5(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t *r1, sysarg_t *r2, sysarg_t *r3,
+    sysarg_t *r4, sysarg_t *r5)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, 0, r1, r2, r3, r4,
+	    r5);
+}
+
+errno_t async_req_4_0(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, arg4, NULL, NULL,
+	    NULL, NULL, NULL);
+}
+
+errno_t async_req_4_1(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t *r1)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, arg4, r1, NULL,
+	    NULL, NULL, NULL);
+}
+
+errno_t async_req_4_2(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t *r1, sysarg_t *r2)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, arg4, r1, r2, NULL,
+	    NULL, NULL);
+}
+
+errno_t async_req_4_3(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t *r1, sysarg_t *r2,
+    sysarg_t *r3)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, arg4, r1, r2, r3,
+	    NULL, NULL);
+}
+
+errno_t async_req_4_4(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t *r1, sysarg_t *r2,
+    sysarg_t *r3, sysarg_t *r4)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, arg4, r1, r2, r3,
+	    r4, NULL);
+}
+
+errno_t async_req_4_5(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t *r1, sysarg_t *r2,
+    sysarg_t *r3, sysarg_t *r4, sysarg_t *r5)
+{
+	return async_req_fast(exch, imethod, arg1, arg2, arg3, arg4, r1, r2, r3,
+	    r4, r5);
+}
+
+errno_t async_req_5_0(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t arg5)
+{
+	return async_req_slow(exch, imethod, arg1, arg2, arg3, arg4, arg5, NULL,
+	    NULL, NULL, NULL, NULL);
+}
+
+errno_t async_req_5_1(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t arg5, sysarg_t *r1)
+{
+	return async_req_slow(exch, imethod, arg1, arg2, arg3, arg4, arg5, r1,
+	    NULL, NULL, NULL, NULL);
+}
+
+errno_t async_req_5_2(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t arg5, sysarg_t *r1,
+    sysarg_t *r2)
+{
+	return async_req_slow(exch, imethod, arg1, arg2, arg3, arg4, arg5, r1, r2,
+	    NULL, NULL, NULL);
+}
+
+errno_t async_req_5_3(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t arg5, sysarg_t *r1,
+    sysarg_t *r2, sysarg_t *r3)
+{
+	return async_req_slow(exch, imethod, arg1, arg2, arg3, arg4, arg5, r1, r2,
+	    r3, NULL, NULL);
+}
+
+errno_t async_req_5_4(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t arg5, sysarg_t *r1,
+    sysarg_t *r2, sysarg_t *r3, sysarg_t *r4)
+{
+	return async_req_slow(exch, imethod, arg1, arg2, arg3, arg4, arg5, r1, r2,
+	    r3, r4, NULL);
+}
+
+errno_t async_req_5_5(async_exch_t *exch, sysarg_t imethod, sysarg_t arg1,
+    sysarg_t arg2, sysarg_t arg3, sysarg_t arg4, sysarg_t arg5, sysarg_t *r1,
+    sysarg_t *r2, sysarg_t *r3, sysarg_t *r4, sysarg_t *r5)
+{
+	return async_req_slow(exch, imethod, arg1, arg2, arg3, arg4, arg5, r1, r2,
+	    r3, r4, r5);
 }
 
 void async_msg_0(async_exch_t *exch, sysarg_t imethod)
@@ -587,7 +875,7 @@ static errno_t async_connect_me_to_internal(cap_phone_handle_t phone,
 	if (rc != EOK)
 		return rc;
 
-	*out_phone = (cap_phone_handle_t) IPC_GET_ARG5(result);
+	*out_phone = (cap_phone_handle_t) ipc_get_arg5(&result);
 	return EOK;
 }
 
@@ -600,29 +888,36 @@ static errno_t async_connect_me_to_internal(cap_phone_handle_t phone,
  * @param iface Connection interface.
  * @param arg2  User defined argument.
  * @param arg3  User defined argument.
+ * @param rc    Placeholder for return code. Unused if NULL.
  *
  * @return New session on success or NULL on error.
  *
  */
 async_sess_t *async_connect_me_to(async_exch_t *exch, iface_t iface,
-    sysarg_t arg2, sysarg_t arg3)
+    sysarg_t arg2, sysarg_t arg3, errno_t *rc)
 {
 	if (exch == NULL) {
-		errno = ENOENT;
+		if (rc != NULL)
+			*rc = ENOENT;
+
 		return NULL;
 	}
 
 	async_sess_t *sess = calloc(1, sizeof(async_sess_t));
 	if (sess == NULL) {
-		errno = ENOMEM;
+		if (rc != NULL)
+			*rc = ENOMEM;
+
 		return NULL;
 	}
 
 	cap_phone_handle_t phone;
-	errno_t rc = async_connect_me_to_internal(exch->phone, iface, arg2,
+	errno_t ret = async_connect_me_to_internal(exch->phone, iface, arg2,
 	    arg3, 0, &phone);
-	if (rc != EOK) {
-		errno = rc;
+	if (ret != EOK) {
+		if (rc != NULL)
+			*rc = ret;
+
 		free(sess);
 		return NULL;
 	}
@@ -668,29 +963,36 @@ void async_sess_args_set(async_sess_t *sess, iface_t iface, sysarg_t arg2,
  * @param iface Connection interface.
  * @param arg2  User defined argument.
  * @param arg3  User defined argument.
+ * @param rc    Placeholder for return code. Unused if NULL.
  *
  * @return New session on success or NULL on error.
  *
  */
 async_sess_t *async_connect_me_to_blocking(async_exch_t *exch, iface_t iface,
-    sysarg_t arg2, sysarg_t arg3)
+    sysarg_t arg2, sysarg_t arg3, errno_t *rc)
 {
 	if (exch == NULL) {
-		errno = ENOENT;
+		if (rc != NULL)
+			*rc = ENOENT;
+
 		return NULL;
 	}
 
 	async_sess_t *sess = calloc(1, sizeof(async_sess_t));
 	if (sess == NULL) {
-		errno = ENOMEM;
+		if (rc != NULL)
+			*rc = ENOMEM;
+
 		return NULL;
 	}
 
 	cap_phone_handle_t phone;
-	errno_t rc = async_connect_me_to_internal(exch->phone, iface, arg2,
+	errno_t ret = async_connect_me_to_internal(exch->phone, iface, arg2,
 	    arg3, IPC_FLAG_BLOCKING, &phone);
-	if (rc != EOK) {
-		errno = rc;
+	if (ret != EOK) {
+		if (rc != NULL)
+			*rc = ret;
+
 		free(sess);
 		return NULL;
 	}
@@ -710,19 +1012,28 @@ async_sess_t *async_connect_me_to_blocking(async_exch_t *exch, iface_t iface,
 
 /** Connect to a task specified by id.
  *
+ * @param id Task to which to connect.
+ * @param rc Placeholder for return code. Unused if NULL.
+ *
+ * @return New session on success or NULL on error.
+ *
  */
-async_sess_t *async_connect_kbox(task_id_t id)
+async_sess_t *async_connect_kbox(task_id_t id, errno_t *rc)
 {
 	async_sess_t *sess = calloc(1, sizeof(async_sess_t));
 	if (sess == NULL) {
-		errno = ENOMEM;
+		if (rc != NULL)
+			*rc = ENOMEM;
+
 		return NULL;
 	}
 
 	cap_phone_handle_t phone;
-	errno_t rc = ipc_connect_kbox(id, &phone);
-	if (rc != EOK) {
-		errno = rc;
+	errno_t ret = ipc_connect_kbox(id, &phone);
+	if (ret != EOK) {
+		if (rc != NULL)
+			*rc = ret;
+
 		free(sess);
 		return NULL;
 	}
@@ -738,32 +1049,29 @@ async_sess_t *async_connect_kbox(task_id_t id)
 	return sess;
 }
 
-static errno_t async_hangup_internal(cap_phone_handle_t phone)
+static void async_hangup_internal(cap_phone_handle_t phone)
 {
-	return ipc_hangup(phone);
+	errno_t rc;
+
+	rc = ipc_hangup(phone);
+	assert(rc == EOK);
+	(void) rc;
 }
 
 /** Wrapper for ipc_hangup.
  *
  * @param sess Session to hung up.
- *
- * @return Zero on success or an error code.
- *
  */
-errno_t async_hangup(async_sess_t *sess)
+void async_hangup(async_sess_t *sess)
 {
 	async_exch_t *exch;
 
 	assert(sess);
 
 	fibril_mutex_lock(&async_sess_mutex);
+	assert(sess->exchanges == 0);
 
-	if (sess->exchanges > 0) {
-		fibril_mutex_unlock(&async_sess_mutex);
-		return EBUSY;
-	}
-
-	errno_t rc = async_hangup_internal(sess->phone);
+	async_hangup_internal(sess->phone);
 
 	while (!list_empty(&sess->exch_list)) {
 		exch = (async_exch_t *)
@@ -772,15 +1080,15 @@ errno_t async_hangup(async_sess_t *sess)
 
 		list_remove(&exch->sess_link);
 		list_remove(&exch->global_link);
-		async_hangup_internal(exch->phone);
+		if (sess->mgmt != EXCHANGE_ATOMIC &&
+		    sess->mgmt != EXCHANGE_SERIALIZE)
+			async_hangup_internal(exch->phone);
 		free(exch);
 	}
 
 	free(sess);
 
 	fibril_mutex_unlock(&async_sess_mutex);
-
-	return rc;
 }
 
 /** Start new exchange in a session.
@@ -925,8 +1233,8 @@ void async_exchange_end(async_exch_t *exch)
  * @return Zero on success or an error code from errno.h.
  *
  */
-errno_t async_share_in_start(async_exch_t *exch, size_t size, sysarg_t arg,
-    unsigned int *flags, void **dst)
+static errno_t async_share_in_start(async_exch_t *exch, size_t size,
+    sysarg_t arg, unsigned int *flags, void **dst)
 {
 	if (exch == NULL)
 		return ENOENT;
@@ -942,6 +1250,29 @@ errno_t async_share_in_start(async_exch_t *exch, size_t size, sysarg_t arg,
 
 	*dst = (void *) _dst;
 	return res;
+}
+
+errno_t async_share_in_start_0_0(async_exch_t *exch, size_t size, void **dst)
+{
+	return async_share_in_start(exch, size, 0, NULL, dst);
+}
+
+errno_t async_share_in_start_0_1(async_exch_t *exch, size_t size,
+    unsigned int *flags, void **dst)
+{
+	return async_share_in_start(exch, size, 0, flags, dst);
+}
+
+errno_t async_share_in_start_1_0(async_exch_t *exch, size_t size, sysarg_t arg,
+    void **dst)
+{
+	return async_share_in_start(exch, size, arg, NULL, dst);
+}
+
+errno_t async_share_in_start_1_1(async_exch_t *exch, size_t size, sysarg_t arg,
+    unsigned int *flags, void **dst)
+{
+	return async_share_in_start(exch, size, arg, flags, dst);
 }
 
 /** Wrapper for IPC_M_SHARE_OUT calls using the async framework.
@@ -1019,7 +1350,7 @@ errno_t async_state_change_start(async_exch_t *exch, sysarg_t arg1, sysarg_t arg
     sysarg_t arg3, async_exch_t *other_exch)
 {
 	return async_req_5_0(exch, IPC_M_STATE_CHANGE_AUTHORIZE,
-	    arg1, arg2, arg3, 0, CAP_HANDLE_RAW(other_exch->phone));
+	    arg1, arg2, arg3, 0, cap_handle_raw(other_exch->phone));
 }
 
 /** Lock and get session remote state

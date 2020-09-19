@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Jaroslav Jindrak
+ * Copyright (c) 2019 Jaroslav Jindrak
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,7 @@
 
 #include <__bits/string/stringfwd.hpp>
 #include <algorithm>
+#include <cassert>
 #include <initializer_list>
 #include <iosfwd>
 #include <iterator>
@@ -80,12 +81,12 @@ namespace std
 
         static int compare(const char_type* s1, const char_type* s2, size_t n)
         {
-            return hel::str_lcmp(s1, s2, n);
+            return ::strncmp(s1, s2, n);
         }
 
         static size_t length(const char_type* s)
         {
-            return hel::str_size(s);
+            return ::strlen(s);
         }
 
         static const char_type* find(const char_type* s, size_t n, const char_type& c)
@@ -177,36 +178,42 @@ namespace std
         static int compare(const char_type* s1, const char_type* s2, size_t n)
         {
             // TODO: implement
+            __unimplemented();
             return 0;
         }
 
         static size_t length(const char_type* s)
         {
             // TODO: implement
+            __unimplemented();
             return 0;
         }
 
         static const char_type* find(const char_type* s, size_t n, const char_type& c)
         {
             // TODO: implement
+            __unimplemented();
             return nullptr;
         }
 
         static char_type* move(char_type* s1, const char_type* s2, size_t n)
         {
             // TODO: implement
+            __unimplemented();
             return nullptr;
         }
 
         static char_type* copy(char_type* s1, const char_type* s2, size_t n)
         {
             // TODO: implement
+            __unimplemented();
             return nullptr;
         }
 
         static char_type* assign(char_type* s, size_t n, char_type c)
         {
             // TODO: implement
+            __unimplemented();
             return nullptr;
         }
 
@@ -265,36 +272,42 @@ namespace std
         static int compare(const char_type* s1, const char_type* s2, size_t n)
         {
             // TODO: implement
+            __unimplemented();
             return 0;
         }
 
         static size_t length(const char_type* s)
         {
             // TODO: implement
+            __unimplemented();
             return 0;
         }
 
         static const char_type* find(const char_type* s, size_t n, const char_type& c)
         {
             // TODO: implement
+            __unimplemented();
             return nullptr;
         }
 
         static char_type* move(char_type* s1, const char_type* s2, size_t n)
         {
             // TODO: implement
+            __unimplemented();
             return nullptr;
         }
 
         static char_type* copy(char_type* s1, const char_type* s2, size_t n)
         {
             // TODO: implement
+            __unimplemented();
             return nullptr;
         }
 
         static char_type* assign(char_type* s, size_t n, char_type c)
         {
             // TODO: implement
+            __unimplemented();
             return nullptr;
         }
 
@@ -352,13 +365,16 @@ namespace std
         static int compare(const char_type* s1, const char_type* s2, size_t n)
         {
             // TODO: This function does not exits...
-            //return hel::wstr_lcmp(s1, s2, n);
+            __unimplemented();
             return 0;
         }
 
         static size_t length(const char_type* s)
         {
-            return hel::wstr_size(s);
+            size_t i = 0;
+            while (s[i] != 0)
+                i++;
+            return i;
         }
 
         static const char_type* find(const char_type* s, size_t n, const char_type& c)
@@ -1938,6 +1954,7 @@ namespace std
         size_t operator()(const wstring& str) const noexcept
         {
             // TODO: implement
+            __unimplemented();
             return size_t{};
         }
 

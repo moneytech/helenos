@@ -44,7 +44,7 @@
 
 #define MAX_DATA_LENGTH ((size_t)(0xFFFF))
 
-static_assert(sizeof(usb_device_request_setup_packet_t) == 8);
+static_assert(sizeof(usb_device_request_setup_packet_t) == 8, "");
 
 /** Generic wrapper for SET requests using standard control request format.
  *
@@ -755,7 +755,7 @@ errno_t usb_request_get_string(usb_pipe_t *pipe,
 
 	/* Prepare dynamically allocated variables. */
 	uint8_t *string = NULL;
-	wchar_t *string_chars = NULL;
+	char32_t *string_chars = NULL;
 
 	/* Get the actual descriptor. */
 	size_t string_size;
@@ -782,7 +782,7 @@ errno_t usb_request_get_string(usb_pipe_t *pipe,
 	}
 
 	const size_t string_char_count = string_size / 2;
-	string_chars = malloc(sizeof(wchar_t) * (string_char_count + 1));
+	string_chars = malloc(sizeof(char32_t) * (string_char_count + 1));
 	if (string_chars == NULL) {
 		rc = ENOMEM;
 		goto leave;

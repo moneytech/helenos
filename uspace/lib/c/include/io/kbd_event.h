@@ -32,10 +32,11 @@
 /** @file
  */
 
-#ifndef LIBC_IO_KBD_EVENT_H_
-#define LIBC_IO_KBD_EVENT_H_
+#ifndef _LIBC_IO_KBD_EVENT_H_
+#define _LIBC_IO_KBD_EVENT_H_
 
 #include <adt/list.h>
+#include <inttypes.h>
 #include <io/keycode.h>
 
 typedef enum {
@@ -58,7 +59,7 @@ typedef struct {
 	keymod_t mods;
 
 	/** The character that was generated or '\0' for none. */
-	wchar_t c;
+	char32_t c;
 } kbd_event_t;
 
 #endif

@@ -36,7 +36,6 @@
 #define KERN_ppc32_PAGE_H_
 
 #include <arch/mm/frame.h>
-#include <trace.h>
 
 #define PAGE_WIDTH  FRAME_WIDTH
 #define PAGE_SIZE   FRAME_SIZE
@@ -149,6 +148,7 @@
 
 #include <mm/mm.h>
 #include <arch/interrupt.h>
+#include <trace.h>
 
 /** Page Table Entry. */
 typedef struct {
@@ -161,7 +161,7 @@ typedef struct {
 	unsigned int pfn : 20;                /**< Physical frame number. */
 } pte_t;
 
-NO_TRACE static inline unsigned int get_pt_flags(pte_t *pt, size_t i)
+_NO_TRACE static inline unsigned int get_pt_flags(pte_t *pt, size_t i)
 {
 	pte_t *entry = &pt[i];
 
@@ -174,7 +174,7 @@ NO_TRACE static inline unsigned int get_pt_flags(pte_t *pt, size_t i)
 	    (entry->global << PAGE_GLOBAL_SHIFT));
 }
 
-NO_TRACE static inline void set_pt_flags(pte_t *pt, size_t i, int flags)
+_NO_TRACE static inline void set_pt_flags(pte_t *pt, size_t i, int flags)
 {
 	pte_t *entry = &pt[i];
 
@@ -184,7 +184,7 @@ NO_TRACE static inline void set_pt_flags(pte_t *pt, size_t i, int flags)
 	entry->valid = 1;
 }
 
-NO_TRACE static inline void set_pt_present(pte_t *pt, size_t i)
+_NO_TRACE static inline void set_pt_present(pte_t *pt, size_t i)
 {
 	pte_t *entry = &pt[i];
 

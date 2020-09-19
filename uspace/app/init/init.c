@@ -33,6 +33,7 @@
  * @file
  */
 
+#include <fibril.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <vfs/vfs.h>
@@ -46,9 +47,13 @@
 #include <str_error.h>
 #include <config.h>
 #include <io/logctl.h>
+#include <vfs/vfs.h>
 #include <vol.h>
 #include "untar.h"
 #include "init.h"
+
+#define BANNER_LEFT   "######> "
+#define BANNER_RIGHT  " <######"
 
 #define ROOT_DEVICE       "bd/initrd"
 #define ROOT_MOUNT_POINT  "/"
@@ -62,11 +67,10 @@
 #define SRV_CONSOLE  "/srv/hid/console"
 #define APP_GETTERM  "/app/getterm"
 
-#define SRV_COMPOSITOR  "/srv/hid/compositor"
+#define SRV_DISPLAY  "/srv/hid/display"
 
 #define HID_INPUT              "hid/input"
 #define HID_OUTPUT             "hid/output"
-#define HID_COMPOSITOR_SERVER  ":0"
 
 #define srv_start(path, ...) \
 	srv_startl(path, path, ##__VA_ARGS__, NULL)
@@ -80,6 +84,19 @@ static const char *sys_dirs[] = {
 static void info_print(void)
 {
 	printf("%s: HelenOS init\n", NAME);
+}
+
+static void oom_check(errno_t rc, const char *path)
+{
+	if (rc == ENOMEM) {
+		printf("%sOut-of-memory condition detected%s\n", BANNER_LEFT,
+		    BANNER_RIGHT);
+		printf("%sBailing out of the boot process after %s%s\n",
+		    BANNER_LEFT, path, BANNER_RIGHT);
+		printf("%sMore physical memory is required%s\n", BANNER_LEFT,
+		    BANNER_RIGHT);
+		exit(ENOMEM);
+	}
 }
 
 /** Report mount operation success */
@@ -198,6 +215,7 @@ static errno_t srv_startl(const char *path, ...)
 	va_end(ap);
 
 	if (rc != EOK) {
+		oom_check(rc, path);
 		printf("%s: Error spawning %s (%s)\n", NAME, path,
 		    str_error(rc));
 		return rc;
@@ -253,33 +271,22 @@ static errno_t console(const char *isvc, const char *osvc)
 	return srv_start(SRV_CONSOLE, isvc, osvc);
 }
 
-static errno_t compositor(const char *isvc, const char *name)
+static errno_t display_server(void)
 {
-	/* Wait for the input service to be ready */
-	service_id_t service_id;
-	errno_t rc = loc_service_get_id(isvc, &service_id, IPC_FLAG_BLOCKING);
-	if (rc != EOK) {
-		printf("%s: Error waiting on %s (%s)\n", NAME, isvc,
-		    str_error(rc));
-		return rc;
-	}
-
-	return srv_start(SRV_COMPOSITOR, isvc, name);
+	return srv_start(SRV_DISPLAY);
 }
 
-static int gui_start(const char *app, const char *srv_name)
+static int app_start(const char *app)
 {
-	char winreg[50];
-	snprintf(winreg, sizeof(winreg), "%s%s%s", "comp", srv_name, "/winreg");
-
-	printf("%s: Spawning %s %s\n", NAME, app, winreg);
+	printf("%s: Spawning %s\n", NAME, app);
 
 	task_id_t id;
 	task_wait_t wait;
-	errno_t rc = task_spawnl(&id, &wait, app, app, winreg, NULL);
+	errno_t rc = task_spawnl(&id, &wait, app, app, NULL);
 	if (rc != EOK) {
-		printf("%s: Error spawning %s %s (%s)\n", NAME, app,
-		    winreg, str_error(rc));
+		oom_check(rc, app);
+		printf("%s: Error spawning %s (%s)\n", NAME, app,
+		    str_error(rc));
 		return -1;
 	}
 
@@ -289,7 +296,7 @@ static int gui_start(const char *app, const char *srv_name)
 	if ((rc != EOK) || (texit != TASK_EXIT_NORMAL)) {
 		printf("%s: Error retrieving retval from %s (%s)\n", NAME,
 		    app, str_error(rc));
-		return -1;
+		return rc;
 	}
 
 	return retval;
@@ -303,18 +310,22 @@ static void getterm(const char *svc, const char *app, bool msg)
 
 		errno_t rc = task_spawnl(NULL, NULL, APP_GETTERM, APP_GETTERM, svc,
 		    LOCFS_MOUNT_POINT, "--msg", "--wait", "--", app, NULL);
-		if (rc != EOK)
+		if (rc != EOK) {
+			oom_check(rc, APP_GETTERM);
 			printf("%s: Error spawning %s %s %s --msg --wait -- %s\n",
 			    NAME, APP_GETTERM, svc, LOCFS_MOUNT_POINT, app);
+		}
 	} else {
 		printf("%s: Spawning %s %s %s --wait -- %s\n", NAME,
 		    APP_GETTERM, svc, LOCFS_MOUNT_POINT, app);
 
 		errno_t rc = task_spawnl(NULL, NULL, APP_GETTERM, APP_GETTERM, svc,
 		    LOCFS_MOUNT_POINT, "--wait", "--", app, NULL);
-		if (rc != EOK)
+		if (rc != EOK) {
+			oom_check(rc, APP_GETTERM);
 			printf("%s: Error spawning %s %s %s --wait -- %s\n",
 			    NAME, APP_GETTERM, svc, LOCFS_MOUNT_POINT, app);
+		}
 	}
 }
 
@@ -457,11 +468,11 @@ int main(int argc, char *argv[])
 	init_sysvol();
 
 	if (!config_key_exists("console")) {
-		rc = compositor(HID_INPUT, HID_COMPOSITOR_SERVER);
+		rc = display_server();
 		if (rc == EOK) {
-			gui_start("/app/barber", HID_COMPOSITOR_SERVER);
-			gui_start("/app/vlaunch", HID_COMPOSITOR_SERVER);
-			gui_start("/app/vterm", HID_COMPOSITOR_SERVER);
+			app_start("/app/barber");
+			app_start("/app/vlaunch");
+			app_start("/app/vterm");
 		}
 	}
 

@@ -65,13 +65,14 @@
 #include "mouse_proto.h"
 #include "serial.h"
 
-#define NUM_LAYOUTS  4
+#define NUM_LAYOUTS 5
 
 static layout_ops_t *layout[NUM_LAYOUTS] = {
 	&us_qwerty_ops,
 	&us_dvorak_ops,
 	&cz_ops,
-	&ar_ops
+	&ar_ops,
+	&fr_azerty_ops
 };
 
 typedef struct {
@@ -207,32 +208,39 @@ void kbd_push_event(kbd_dev_t *kdev, int type, unsigned int key)
 
 	// TODO: More elegant layout switching
 
-	if ((type == KEY_PRESS) && (kdev->mods & KM_LCTRL) &&
-	    (key == KC_F1)) {
-		layout_destroy(kdev->active_layout);
-		kdev->active_layout = layout_create(layout[0]);
-		return;
+	if ((type == KEY_PRESS) && (kdev->mods & KM_LCTRL)) {
+		switch (key) {
+		case KC_F1:
+			layout_destroy(kdev->active_layout);
+			kdev->active_layout = layout_create(layout[0]);
+			break;
+		case KC_F2:
+			layout_destroy(kdev->active_layout);
+			kdev->active_layout = layout_create(layout[1]);
+			break;
+		case KC_F3:
+			layout_destroy(kdev->active_layout);
+			kdev->active_layout = layout_create(layout[2]);
+			break;
+		case KC_F4:
+			layout_destroy(kdev->active_layout);
+			kdev->active_layout = layout_create(layout[3]);
+			break;
+		case KC_F5:
+			layout_destroy(kdev->active_layout);
+			kdev->active_layout = layout_create(layout[4]);
+			break;
+		default: // default: is here to avoid compiler warning about unhandled cases
+			break;
+		}
 	}
 
-	if ((type == KEY_PRESS) && (kdev->mods & KM_LCTRL) &&
-	    (key == KC_F2)) {
-		layout_destroy(kdev->active_layout);
-		kdev->active_layout = layout_create(layout[1]);
-		return;
-	}
-
-	if ((type == KEY_PRESS) && (kdev->mods & KM_LCTRL) &&
-	    (key == KC_F3)) {
-		layout_destroy(kdev->active_layout);
-		kdev->active_layout = layout_create(layout[2]);
-		return;
-	}
-
-	if ((type == KEY_PRESS) && (kdev->mods & KM_LCTRL) &&
-	    (key == KC_F4)) {
-		layout_destroy(kdev->active_layout);
-		kdev->active_layout = layout_create(layout[3]);
-		return;
+	if (type == KEY_PRESS) {
+		switch (key) {
+		case KC_F12:
+			console_kcon();
+			break;
+		}
 	}
 
 	ev.type = type;
@@ -333,7 +341,7 @@ static void client_connection(ipc_call_t *icall, void *arg)
 		ipc_call_t call;
 		async_get_call(&call);
 
-		if (!IPC_GET_IMETHOD(call)) {
+		if (!ipc_get_imethod(&call)) {
 			if (client->sess != NULL) {
 				async_hangup(client->sess);
 				client->sess = NULL;
@@ -352,7 +360,7 @@ static void client_connection(ipc_call_t *icall, void *arg)
 			} else
 				async_answer_0(&call, ELIMIT);
 		} else {
-			switch (IPC_GET_IMETHOD(call)) {
+			switch (ipc_get_imethod(&call)) {
 			case INPUT_ACTIVATE:
 				active_client = client;
 				client_arbitration();
@@ -367,7 +375,7 @@ static void client_connection(ipc_call_t *icall, void *arg)
 
 static void kconsole_event_handler(ipc_call_t *call, void *arg)
 {
-	if (IPC_GET_ARG1(*call)) {
+	if (ipc_get_arg1(call)) {
 		/* Kernel console activated */
 		active = false;
 	} else {
@@ -627,6 +635,9 @@ static void kbd_add_legacy_devs(void)
 	kbd_add_dev(&chardev_port, &stty_ctl);
 #endif
 #if defined(UARCH_sparc64) && defined(PROCESSOR_sun4v)
+	kbd_add_dev(&chardev_port, &stty_ctl);
+#endif
+#if defined(UARCH_arm64) && defined(MACHINE_virt)
 	kbd_add_dev(&chardev_port, &stty_ctl);
 #endif
 	/* Silence warning on abs32le about kbd_add_dev() being unused */

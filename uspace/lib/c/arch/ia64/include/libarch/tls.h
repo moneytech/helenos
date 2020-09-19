@@ -32,8 +32,8 @@
 /** @file
  */
 
-#ifndef LIBC_ia64_TLS_H_
-#define LIBC_ia64_TLS_H_
+#ifndef _LIBC_ia64_TLS_H_
+#define _LIBC_ia64_TLS_H_
 
 #define CONFIG_TLS_VARIANT_1
 
@@ -41,7 +41,7 @@
 
 /* This structure must be exactly 16 bytes long */
 typedef struct {
-	void *dtv; /* unused in static linking*/
+	void **dtv;
 	void *fibril_data;
 } tcb_t;
 

@@ -327,8 +327,8 @@ errno_t udebug_stop(thread_t *thread, call_t *call)
 	call = thread->udebug.go_call;
 	thread->udebug.go_call = NULL;
 
-	IPC_SET_RETVAL(call->data, 0);
-	IPC_SET_ARG1(call->data, UDEBUG_EVENT_STOP);
+	ipc_set_retval(&call->data, 0);
+	ipc_set_arg1(&call->data, UDEBUG_EVENT_STOP);
 
 	THREAD->udebug.cur_event = UDEBUG_EVENT_STOP;
 
@@ -426,7 +426,7 @@ errno_t udebug_thread_read(void **buffer, size_t buf_size, size_t *stored,
  * @param data      Place to store pointer to newly allocated block.
  * @param data_size Place to store size of the data.
  *
- * @return EOK.
+ * @return EOK on success, ENOMEM if memory allocation failed.
  *
  */
 errno_t udebug_name_read(char **data, size_t *data_size)
@@ -547,7 +547,7 @@ errno_t udebug_regs_read(thread_t *thread, void **buffer)
  * @param buffer      For storing a pointer to the allocated buffer.
  *
  */
-errno_t udebug_mem_read(sysarg_t uspace_addr, size_t n, void **buffer)
+errno_t udebug_mem_read(uspace_addr_t uspace_addr, size_t n, void **buffer)
 {
 	/* Verify task state */
 	mutex_lock(&TASK->udebug.lock);
@@ -568,7 +568,7 @@ errno_t udebug_mem_read(sysarg_t uspace_addr, size_t n, void **buffer)
 	 * be a problem
 	 *
 	 */
-	errno_t rc = copy_from_uspace(data_buffer, (void *) uspace_addr, n);
+	errno_t rc = copy_from_uspace(data_buffer, uspace_addr, n);
 	mutex_unlock(&TASK->udebug.lock);
 
 	if (rc != EOK)

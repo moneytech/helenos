@@ -38,12 +38,11 @@
 #include <errno.h>
 #include <stdlib.h>
 
-#include "../gfx/font-8x16.h"
-#include "embedded.h"
-#include "../drawctx.h"
-#include "bitmap_backend.h"
+#include <draw/gfx.h>
+#include <draw/font.h>
+#include <draw/drawctx.h>
 
-static errno_t fde_resolve_glyph(void *unused, const wchar_t chr,
+static errno_t fde_resolve_glyph(void *unused, const char32_t chr,
     glyph_id_t *glyph_id)
 {
 	bool found = false;

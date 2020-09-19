@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2001-2004 Jakub Jermar
  * Copyright (c) 2005 Martin Decky
  * Copyright (c) 2008 Jiri Svoboda
  * Copyright (c) 2011 Martin Sucha
@@ -32,26 +33,90 @@
 /** @addtogroup libc
  * @{
  */
-/** @file
+
+/**
+ * @file
+ * @brief String functions.
+ *
+ * Strings and characters use the Universal Character Set (UCS). The standard
+ * strings, called just strings are encoded in UTF-8. Wide strings (encoded
+ * in UTF-32) are supported to a limited degree. A single character is
+ * represented as char32_t.@n
+ *
+ * Overview of the terminology:@n
+ *
+ *  Term                  Meaning
+ *  --------------------  ----------------------------------------------------
+ *  byte                  8 bits stored in uint8_t (unsigned 8 bit integer)
+ *
+ *  character             UTF-32 encoded Unicode character, stored in char32_t
+ *                        (unsigned 32 bit integer), code points 0 .. 1114111
+ *                        are valid
+ *
+ *  ASCII character       7 bit encoded ASCII character, stored in char
+ *                        (usually signed 8 bit integer), code points 0 .. 127
+ *                        are valid
+ *
+ *  string                UTF-8 encoded NULL-terminated Unicode string, char *
+ *
+ *  wide string           UTF-32 encoded NULL-terminated Unicode string,
+ *                        char32_t *
+ *
+ *  [wide] string size    number of BYTES in a [wide] string (excluding
+ *                        the NULL-terminator), size_t
+ *
+ *  [wide] string length  number of CHARACTERS in a [wide] string (excluding
+ *                        the NULL-terminator), size_t
+ *
+ *  [wide] string width   number of display cells on a monospace display taken
+ *                        by a [wide] string, size_t
+ *
+ *
+ * Overview of string metrics:@n
+ *
+ *  Metric  Abbrev.  Type     Meaning
+ *  ------  ------   ------   -------------------------------------------------
+ *  size    n        size_t   number of BYTES in a string (excluding the
+ *                            NULL-terminator)
+ *
+ *  length  l        size_t   number of CHARACTERS in a string (excluding the
+ *                            null terminator)
+ *
+ *  width  w         size_t   number of display cells on a monospace display
+ *                            taken by a string
+ *
+ *
+ * Function naming prefixes:@n
+ *
+ *  chr_    operate on characters
+ *  ascii_  operate on ASCII characters
+ *  str_    operate on strings
+ *  wstr_   operate on wide strings
+ *
+ *  [w]str_[n|l|w]  operate on a prefix limited by size, length
+ *                  or width
+ *
+ *
+ * A specific character inside a [wide] string can be referred to by:@n
+ *
+ *  pointer (char *, char32_t *)
+ *  byte offset (size_t)
+ *  character index (size_t)
+ *
  */
 
 #include <str.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
+
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+
 #include <align.h>
 #include <mem.h>
-#include <limits.h>
-
-/** Check the condition if wchar_t is signed */
-#ifdef __WCHAR_UNSIGNED__
-#define WCHAR_SIGNED_CHECK(cond)  (true)
-#else
-#define WCHAR_SIGNED_CHECK(cond)  (cond)
-#endif
 
 /** Byte mask consisting of lowest @n bits (out of 8) */
 #define LO_MASK_8(n)  ((uint8_t) ((1 << (n)) - 1))
@@ -80,7 +145,7 @@
  *         NULL if attempt to decode beyond @a size.
  *
  */
-wchar_t str_decode(const char *str, size_t *offset, size_t size)
+char32_t str_decode(const char *str, size_t *offset, size_t size)
 {
 	if (*offset + 1 > size)
 		return 0;
@@ -117,7 +182,7 @@ wchar_t str_decode(const char *str, size_t *offset, size_t size)
 	if (*offset + cbytes > size)
 		return U_SPECIAL;
 
-	wchar_t ch = b0 & LO_MASK_8(b0_bits);
+	char32_t ch = b0 & LO_MASK_8(b0_bits);
 
 	/* Decode continuation bytes */
 	while (cbytes > 0) {
@@ -128,7 +193,7 @@ wchar_t str_decode(const char *str, size_t *offset, size_t size)
 			return U_SPECIAL;
 
 		/* Shift data bits to ch */
-		ch = (ch << CONT_BITS) | (wchar_t) (b & LO_MASK_8(CONT_BITS));
+		ch = (ch << CONT_BITS) | (char32_t) (b & LO_MASK_8(CONT_BITS));
 		cbytes--;
 	}
 
@@ -150,7 +215,7 @@ wchar_t str_decode(const char *str, size_t *offset, size_t size)
  *         NULL if attempt to decode beyond @a start of str.
  *
  */
-wchar_t str_decode_reverse(const char *str, size_t *offset, size_t size)
+char32_t str_decode_reverse(const char *str, size_t *offset, size_t size)
 {
 	if (*offset == 0)
 		return 0;
@@ -193,7 +258,7 @@ wchar_t str_decode_reverse(const char *str, size_t *offset, size_t size)
  *         was not enough space in the output buffer or EINVAL if the character
  *         code was invalid.
  */
-errno_t chr_encode(const wchar_t ch, char *str, size_t *offset, size_t size)
+errno_t chr_encode(const char32_t ch, char *str, size_t *offset, size_t size)
 {
 	if (*offset >= size)
 		return EOVERFLOW;
@@ -279,9 +344,9 @@ size_t str_size(const char *str)
  * @return Number of bytes used by the wide string
  *
  */
-size_t wstr_size(const wchar_t *str)
+size_t wstr_size(const char32_t *str)
 {
-	return (wstr_length(str) * sizeof(wchar_t));
+	return (wstr_length(str) * sizeof(char32_t));
 }
 
 /** Get size of string with length limit.
@@ -344,9 +409,9 @@ size_t str_nsize(const char *str, size_t max_size)
  * @return Number of bytes used by the wide string
  *
  */
-size_t wstr_nsize(const wchar_t *str, size_t max_size)
+size_t wstr_nsize(const char32_t *str, size_t max_size)
 {
-	return (wstr_nlength(str, max_size) * sizeof(wchar_t));
+	return (wstr_nlength(str, max_size) * sizeof(char32_t));
 }
 
 /** Get size of wide string with length limit.
@@ -362,9 +427,9 @@ size_t wstr_nsize(const wchar_t *str, size_t max_size)
  * @return Number of bytes used by the wide characters.
  *
  */
-size_t wstr_lsize(const wchar_t *str, size_t max_len)
+size_t wstr_lsize(const char32_t *str, size_t max_len)
 {
-	return (wstr_nlength(str, max_len * sizeof(wchar_t)) * sizeof(wchar_t));
+	return (wstr_nlength(str, max_len * sizeof(char32_t)) * sizeof(char32_t));
 }
 
 /** Get number of characters in a string.
@@ -392,7 +457,7 @@ size_t str_length(const char *str)
  * @return Number of characters in @a str.
  *
  */
-size_t wstr_length(const wchar_t *wstr)
+size_t wstr_length(const char32_t *wstr)
 {
 	size_t len = 0;
 
@@ -429,15 +494,15 @@ size_t str_nlength(const char *str, size_t size)
  * @return Number of characters in string.
  *
  */
-size_t wstr_nlength(const wchar_t *str, size_t size)
+size_t wstr_nlength(const char32_t *str, size_t size)
 {
 	size_t len = 0;
-	size_t limit = ALIGN_DOWN(size, sizeof(wchar_t));
+	size_t limit = ALIGN_DOWN(size, sizeof(char32_t));
 	size_t offset = 0;
 
 	while ((offset < limit) && (*str++ != 0)) {
 		len++;
-		offset += sizeof(wchar_t);
+		offset += sizeof(char32_t);
 	}
 
 	return len;
@@ -448,7 +513,7 @@ size_t wstr_nlength(const wchar_t *str, size_t size)
  * @param ch	Character
  * @return	Width of character in cells.
  */
-size_t chr_width(wchar_t ch)
+size_t chr_width(char32_t ch)
 {
 	return 1;
 }
@@ -462,7 +527,7 @@ size_t str_width(const char *str)
 {
 	size_t width = 0;
 	size_t offset = 0;
-	wchar_t ch;
+	char32_t ch;
 
 	while ((ch = str_decode(str, &offset, STR_NO_LIMIT)) != 0)
 		width += chr_width(ch);
@@ -475,9 +540,9 @@ size_t str_width(const char *str)
  * @return True if character is plain ASCII.
  *
  */
-bool ascii_check(wchar_t ch)
+bool ascii_check(char32_t ch)
 {
-	if (WCHAR_SIGNED_CHECK(ch >= 0) && (ch <= 127))
+	if (ch <= 127)
 		return true;
 
 	return false;
@@ -488,9 +553,9 @@ bool ascii_check(wchar_t ch)
  * @return True if character is a valid Unicode code point.
  *
  */
-bool chr_check(wchar_t ch)
+bool chr_check(char32_t ch)
 {
-	if (WCHAR_SIGNED_CHECK(ch >= 0) && (ch <= 1114111))
+	if (ch <= 1114111)
 		return true;
 
 	return false;
@@ -516,8 +581,8 @@ bool chr_check(wchar_t ch)
  */
 int str_cmp(const char *s1, const char *s2)
 {
-	wchar_t c1 = 0;
-	wchar_t c2 = 0;
+	char32_t c1 = 0;
+	char32_t c2 = 0;
 
 	size_t off1 = 0;
 	size_t off2 = 0;
@@ -563,8 +628,8 @@ int str_cmp(const char *s1, const char *s2)
  */
 int str_lcmp(const char *s1, const char *s2, size_t max_len)
 {
-	wchar_t c1 = 0;
-	wchar_t c2 = 0;
+	char32_t c1 = 0;
+	char32_t c2 = 0;
 
 	size_t off1 = 0;
 	size_t off2 = 0;
@@ -615,8 +680,8 @@ int str_lcmp(const char *s1, const char *s2, size_t max_len)
  */
 int str_casecmp(const char *s1, const char *s2)
 {
-	wchar_t c1 = 0;
-	wchar_t c2 = 0;
+	char32_t c1 = 0;
+	char32_t c2 = 0;
 
 	size_t off1 = 0;
 	size_t off2 = 0;
@@ -663,8 +728,8 @@ int str_casecmp(const char *s1, const char *s2)
  */
 int str_lcasecmp(const char *s1, const char *s2, size_t max_len)
 {
-	wchar_t c1 = 0;
-	wchar_t c2 = 0;
+	char32_t c1 = 0;
+	char32_t c2 = 0;
 
 	size_t off1 = 0;
 	size_t off2 = 0;
@@ -707,8 +772,8 @@ int str_lcasecmp(const char *s1, const char *s2, size_t max_len)
  */
 bool str_test_prefix(const char *s, const char *p)
 {
-	wchar_t c1 = 0;
-	wchar_t c2 = 0;
+	char32_t c1 = 0;
+	char32_t c2 = 0;
 
 	size_t off1 = 0;
 	size_t off2 = 0;
@@ -730,6 +795,32 @@ bool str_test_prefix(const char *s, const char *p)
 	return false;
 }
 
+/** Get a string suffix.
+ *
+ * Return a string suffix defined by the prefix length.
+ *
+ * @param s             The string to get the suffix from.
+ * @param prefix_length Number of prefix characters to ignore.
+ *
+ * @return String suffix.
+ *
+ */
+const char *str_suffix(const char *s, size_t prefix_length)
+{
+	size_t off = 0;
+	size_t i = 0;
+
+	while (true) {
+		str_decode(s, &off, STR_NO_LIMIT);
+		i++;
+
+		if (i >= prefix_length)
+			break;
+	}
+
+	return s + off;
+}
+
 /** Copy string.
  *
  * Copy source string @a src to destination buffer @a dest.
@@ -746,11 +837,12 @@ void str_cpy(char *dest, size_t size, const char *src)
 {
 	/* There must be space for a null terminator in the buffer. */
 	assert(size > 0);
+	assert(src != NULL);
 
 	size_t src_off = 0;
 	size_t dest_off = 0;
 
-	wchar_t ch;
+	char32_t ch;
 	while ((ch = str_decode(src, &src_off, STR_NO_LIMIT)) != 0) {
 		if (chr_encode(ch, dest, &dest_off, size - 1) != EOK)
 			break;
@@ -783,7 +875,7 @@ void str_ncpy(char *dest, size_t size, const char *src, size_t n)
 	size_t src_off = 0;
 	size_t dest_off = 0;
 
-	wchar_t ch;
+	char32_t ch;
 	while ((ch = str_decode(src, &src_off, n)) != 0) {
 		if (chr_encode(ch, dest, &dest_off, size - 1) != EOK)
 			break;
@@ -887,9 +979,9 @@ errno_t spascii_to_str(char *dest, size_t size, const uint8_t *src, size_t n)
  * @param size	Size of the destination buffer.
  * @param src	Source wide string.
  */
-void wstr_to_str(char *dest, size_t size, const wchar_t *src)
+void wstr_to_str(char *dest, size_t size, const char32_t *src)
 {
-	wchar_t ch;
+	char32_t ch;
 	size_t src_idx;
 	size_t dest_off;
 
@@ -922,7 +1014,7 @@ void wstr_to_str(char *dest, size_t size, const wchar_t *src)
 errno_t utf16_to_str(char *dest, size_t size, const uint16_t *src)
 {
 	size_t idx = 0, dest_off = 0;
-	wchar_t ch;
+	char32_t ch;
 	errno_t rc = EOK;
 
 	/* There must be space for a null terminator in the buffer. */
@@ -966,7 +1058,7 @@ errno_t str_to_utf16(uint16_t *dest, size_t dlen, const char *src)
 	errno_t rc = EOK;
 	size_t offset = 0;
 	size_t idx = 0;
-	wchar_t c;
+	char32_t c;
 
 	assert(dlen > 0);
 
@@ -1023,11 +1115,11 @@ size_t utf16_wsize(const uint16_t *ustr)
  * @param src	Source wide string.
  * @return	New string.
  */
-char *wstr_to_astr(const wchar_t *src)
+char *wstr_to_astr(const char32_t *src)
 {
 	char dbuf[STR_BOUNDS(1)];
 	char *str;
-	wchar_t ch;
+	char32_t ch;
 
 	size_t src_idx;
 	size_t dest_off;
@@ -1073,11 +1165,11 @@ char *wstr_to_astr(const wchar_t *src)
  * @param dlen	Length of destination buffer (number of wchars).
  * @param src	Source string.
  */
-void str_to_wstr(wchar_t *dest, size_t dlen, const char *src)
+void str_to_wstr(char32_t *dest, size_t dlen, const char *src)
 {
 	size_t offset;
 	size_t di;
-	wchar_t c;
+	char32_t c;
 
 	assert(dlen > 0);
 
@@ -1102,11 +1194,11 @@ void str_to_wstr(wchar_t *dest, size_t dlen, const char *src)
  *
  * @param src	Source string.
  */
-wchar_t *str_to_awstr(const char *str)
+char32_t *str_to_awstr(const char *str)
 {
 	size_t len = str_length(str);
 
-	wchar_t *wstr = calloc(len + 1, sizeof(wchar_t));
+	char32_t *wstr = calloc(len + 1, sizeof(char32_t));
 	if (wstr == NULL)
 		return NULL;
 
@@ -1121,9 +1213,9 @@ wchar_t *str_to_awstr(const char *str)
  *
  * @return Pointer to character in @a str or NULL if not found.
  */
-char *str_chr(const char *str, wchar_t ch)
+char *str_chr(const char *str, char32_t ch)
 {
-	wchar_t acc;
+	char32_t acc;
 	size_t off = 0;
 	size_t last = 0;
 
@@ -1163,11 +1255,11 @@ char *str_str(const char *hs, const char *n)
  * @param str String to remove from.
  * @param ch  Character to remove.
  */
-void str_rtrim(char *str, wchar_t ch)
+void str_rtrim(char *str, char32_t ch)
 {
 	size_t off = 0;
 	size_t pos = 0;
-	wchar_t c;
+	char32_t c;
 	bool update_last_chunk = true;
 	char *last_chunk = NULL;
 
@@ -1191,9 +1283,9 @@ void str_rtrim(char *str, wchar_t ch)
  * @param str String to remove from.
  * @param ch  Character to remove.
  */
-void str_ltrim(char *str, wchar_t ch)
+void str_ltrim(char *str, char32_t ch)
 {
-	wchar_t acc;
+	char32_t acc;
 	size_t off = 0;
 	size_t pos = 0;
 	size_t str_sz = str_size(str);
@@ -1219,9 +1311,9 @@ void str_ltrim(char *str, wchar_t ch)
  *
  * @return Pointer to character in @a str or NULL if not found.
  */
-char *str_rchr(const char *str, wchar_t ch)
+char *str_rchr(const char *str, char32_t ch)
 {
-	wchar_t acc;
+	char32_t acc;
 	size_t off = 0;
 	size_t last = 0;
 	const char *res = NULL;
@@ -1249,7 +1341,7 @@ char *str_rchr(const char *str, wchar_t ch)
  *         is out of bounds.
  *
  */
-bool wstr_linsert(wchar_t *str, wchar_t ch, size_t pos, size_t max_pos)
+bool wstr_linsert(char32_t *str, char32_t ch, size_t pos, size_t max_pos)
 {
 	size_t len = wstr_length(str);
 
@@ -1277,7 +1369,7 @@ bool wstr_linsert(wchar_t *str, wchar_t ch, size_t pos, size_t max_pos)
  *         is out of bounds.
  *
  */
-bool wstr_remove(wchar_t *str, size_t pos)
+bool wstr_remove(char32_t *str, size_t pos)
 {
 	size_t len = wstr_length(str);
 
@@ -1310,9 +1402,9 @@ bool wstr_remove(wchar_t *str, size_t pos)
 char *str_dup(const char *src)
 {
 	size_t size = str_size(src) + 1;
-	char *dest = (char *) malloc(size);
-	if (dest == NULL)
-		return (char *) NULL;
+	char *dest = malloc(size);
+	if (!dest)
+		return NULL;
 
 	str_cpy(dest, size, src);
 	return dest;
@@ -1344,9 +1436,9 @@ char *str_ndup(const char *src, size_t n)
 	if (size > n)
 		size = n;
 
-	char *dest = (char *) malloc(size + 1);
-	if (dest == NULL)
-		return (char *) NULL;
+	char *dest = malloc(size + 1);
+	if (!dest)
+		return NULL;
 
 	str_ncpy(dest, size + 1, src, size);
 	return dest;
@@ -1374,7 +1466,7 @@ char *str_tok(char *s, const char *delim, char **next)
 	size_t len = str_size(s);
 	size_t cur;
 	size_t tmp;
-	wchar_t ch;
+	char32_t ch;
 
 	/* Skip over leading delimiters. */
 	tmp = 0;
@@ -1397,410 +1489,6 @@ char *str_tok(char *s, const char *delim, char **next)
 	/* Overwrite delimiter with NULL terminator. */
 	*end = '\0';
 	return start;
-}
-
-/** Convert string to uint64_t (internal variant).
- *
- * @param nptr   Pointer to string.
- * @param endptr Pointer to the first invalid character is stored here.
- * @param base   Zero or number between 2 and 36 inclusive.
- * @param neg    Indication of unary minus is stored here.
- * @apram result Result of the conversion.
- *
- * @return EOK if conversion was successful.
- *
- */
-static errno_t str_uint(const char *nptr, char **endptr, unsigned int base,
-    bool *neg, uint64_t *result)
-{
-	assert(endptr != NULL);
-	assert(neg != NULL);
-	assert(result != NULL);
-
-	*neg = false;
-	const char *str = nptr;
-
-	/* Ignore leading whitespace */
-	while (isspace(*str))
-		str++;
-
-	if (*str == '-') {
-		*neg = true;
-		str++;
-	} else if (*str == '+')
-		str++;
-
-	if (base == 0) {
-		/* Decode base if not specified */
-		base = 10;
-
-		if (*str == '0') {
-			base = 8;
-			str++;
-
-			switch (*str) {
-			case 'b':
-			case 'B':
-				base = 2;
-				str++;
-				break;
-			case 'o':
-			case 'O':
-				base = 8;
-				str++;
-				break;
-			case 'd':
-			case 'D':
-			case 't':
-			case 'T':
-				base = 10;
-				str++;
-				break;
-			case 'x':
-			case 'X':
-				base = 16;
-				str++;
-				break;
-			default:
-				str--;
-			}
-		}
-	} else {
-		/* Check base range */
-		if ((base < 2) || (base > 36)) {
-			*endptr = (char *) str;
-			return EINVAL;
-		}
-	}
-
-	*result = 0;
-	const char *startstr = str;
-
-	while (*str != 0) {
-		unsigned int digit;
-
-		if ((*str >= 'a') && (*str <= 'z'))
-			digit = *str - 'a' + 10;
-		else if ((*str >= 'A') && (*str <= 'Z'))
-			digit = *str - 'A' + 10;
-		else if ((*str >= '0') && (*str <= '9'))
-			digit = *str - '0';
-		else
-			break;
-
-		if (digit >= base)
-			break;
-
-		uint64_t prev = *result;
-		*result = (*result) * base + digit;
-
-		if (*result < prev) {
-			/* Overflow */
-			*endptr = (char *) str;
-			return EOVERFLOW;
-		}
-
-		str++;
-	}
-
-	if (str == startstr) {
-		/*
-		 * No digits were decoded => first invalid character is
-		 * the first character of the string.
-		 */
-		str = nptr;
-	}
-
-	*endptr = (char *) str;
-
-	if (str == nptr)
-		return EINVAL;
-
-	return EOK;
-}
-
-/** Convert string to uint8_t.
- *
- * @param nptr   Pointer to string.
- * @param endptr If not NULL, pointer to the first invalid character
- *               is stored here.
- * @param base   Zero or number between 2 and 36 inclusive.
- * @param strict Do not allow any trailing characters.
- * @param result Result of the conversion.
- *
- * @return EOK if conversion was successful.
- *
- */
-errno_t str_uint8_t(const char *nptr, const char **endptr, unsigned int base,
-    bool strict, uint8_t *result)
-{
-	assert(result != NULL);
-
-	bool neg;
-	char *lendptr;
-	uint64_t res;
-	errno_t ret = str_uint(nptr, &lendptr, base, &neg, &res);
-
-	if (endptr != NULL)
-		*endptr = (char *) lendptr;
-
-	if (ret != EOK)
-		return ret;
-
-	/* Do not allow negative values */
-	if (neg)
-		return EINVAL;
-
-	/*
-	 * Check whether we are at the end of
-	 * the string in strict mode
-	 */
-	if ((strict) && (*lendptr != 0))
-		return EINVAL;
-
-	/* Check for overflow */
-	uint8_t _res = (uint8_t) res;
-	if (_res != res)
-		return EOVERFLOW;
-
-	*result = _res;
-
-	return EOK;
-}
-
-/** Convert string to uint16_t.
- *
- * @param nptr   Pointer to string.
- * @param endptr If not NULL, pointer to the first invalid character
- *               is stored here.
- * @param base   Zero or number between 2 and 36 inclusive.
- * @param strict Do not allow any trailing characters.
- * @param result Result of the conversion.
- *
- * @return EOK if conversion was successful.
- *
- */
-errno_t str_uint16_t(const char *nptr, const char **endptr, unsigned int base,
-    bool strict, uint16_t *result)
-{
-	assert(result != NULL);
-
-	bool neg;
-	char *lendptr;
-	uint64_t res;
-	errno_t ret = str_uint(nptr, &lendptr, base, &neg, &res);
-
-	if (endptr != NULL)
-		*endptr = (char *) lendptr;
-
-	if (ret != EOK)
-		return ret;
-
-	/* Do not allow negative values */
-	if (neg)
-		return EINVAL;
-
-	/*
-	 * Check whether we are at the end of
-	 * the string in strict mode
-	 */
-	if ((strict) && (*lendptr != 0))
-		return EINVAL;
-
-	/* Check for overflow */
-	uint16_t _res = (uint16_t) res;
-	if (_res != res)
-		return EOVERFLOW;
-
-	*result = _res;
-
-	return EOK;
-}
-
-/** Convert string to uint32_t.
- *
- * @param nptr   Pointer to string.
- * @param endptr If not NULL, pointer to the first invalid character
- *               is stored here.
- * @param base   Zero or number between 2 and 36 inclusive.
- * @param strict Do not allow any trailing characters.
- * @param result Result of the conversion.
- *
- * @return EOK if conversion was successful.
- *
- */
-errno_t str_uint32_t(const char *nptr, const char **endptr, unsigned int base,
-    bool strict, uint32_t *result)
-{
-	assert(result != NULL);
-
-	bool neg;
-	char *lendptr;
-	uint64_t res;
-	errno_t ret = str_uint(nptr, &lendptr, base, &neg, &res);
-
-	if (endptr != NULL)
-		*endptr = (char *) lendptr;
-
-	if (ret != EOK)
-		return ret;
-
-	/* Do not allow negative values */
-	if (neg)
-		return EINVAL;
-
-	/*
-	 * Check whether we are at the end of
-	 * the string in strict mode
-	 */
-	if ((strict) && (*lendptr != 0))
-		return EINVAL;
-
-	/* Check for overflow */
-	uint32_t _res = (uint32_t) res;
-	if (_res != res)
-		return EOVERFLOW;
-
-	*result = _res;
-
-	return EOK;
-}
-
-/** Convert string to uint64_t.
- *
- * @param nptr   Pointer to string.
- * @param endptr If not NULL, pointer to the first invalid character
- *               is stored here.
- * @param base   Zero or number between 2 and 36 inclusive.
- * @param strict Do not allow any trailing characters.
- * @param result Result of the conversion.
- *
- * @return EOK if conversion was successful.
- *
- */
-errno_t str_uint64_t(const char *nptr, const char **endptr, unsigned int base,
-    bool strict, uint64_t *result)
-{
-	assert(result != NULL);
-
-	bool neg;
-	char *lendptr;
-	errno_t ret = str_uint(nptr, &lendptr, base, &neg, result);
-
-	if (endptr != NULL)
-		*endptr = (char *) lendptr;
-
-	if (ret != EOK)
-		return ret;
-
-	/* Do not allow negative values */
-	if (neg)
-		return EINVAL;
-
-	/*
-	 * Check whether we are at the end of
-	 * the string in strict mode
-	 */
-	if ((strict) && (*lendptr != 0))
-		return EINVAL;
-
-	return EOK;
-}
-
-/** Convert string to int64_t.
- *
- * @param nptr   Pointer to string.
- * @param endptr If not NULL, pointer to the first invalid character
- *               is stored here.
- * @param base   Zero or number between 2 and 36 inclusive.
- * @param strict Do not allow any trailing characters.
- * @param result Result of the conversion.
- *
- * @return EOK if conversion was successful.
- *
- */
-int str_int64_t(const char *nptr, const char **endptr, unsigned int base,
-    bool strict, int64_t *result)
-{
-	assert(result != NULL);
-
-	bool neg;
-	char *lendptr;
-	uint64_t unsigned_result;
-	int ret = str_uint(nptr, &lendptr, base, &neg, &unsigned_result);
-
-	if (endptr != NULL)
-		*endptr = (char *) lendptr;
-
-	if (ret != EOK)
-		return ret;
-
-	/* Do not allow negative values */
-	if (neg) {
-		if (unsigned_result == UINT64_MAX)
-			return EINVAL;
-
-		*result = -(int64_t) unsigned_result;
-	} else
-		*result = unsigned_result;
-
-	/*
-	 * Check whether we are at the end of
-	 * the string in strict mode
-	 */
-	if ((strict) && (*lendptr != 0))
-		return EINVAL;
-
-	return EOK;
-}
-
-/** Convert string to size_t.
- *
- * @param nptr   Pointer to string.
- * @param endptr If not NULL, pointer to the first invalid character
- *               is stored here.
- * @param base   Zero or number between 2 and 36 inclusive.
- * @param strict Do not allow any trailing characters.
- * @param result Result of the conversion.
- *
- * @return EOK if conversion was successful.
- *
- */
-errno_t str_size_t(const char *nptr, const char **endptr, unsigned int base,
-    bool strict, size_t *result)
-{
-	assert(result != NULL);
-
-	bool neg;
-	char *lendptr;
-	uint64_t res;
-	errno_t ret = str_uint(nptr, &lendptr, base, &neg, &res);
-
-	if (endptr != NULL)
-		*endptr = (char *) lendptr;
-
-	if (ret != EOK)
-		return ret;
-
-	/* Do not allow negative values */
-	if (neg)
-		return EINVAL;
-
-	/*
-	 * Check whether we are at the end of
-	 * the string in strict mode
-	 */
-	if ((strict) && (*lendptr != 0))
-		return EINVAL;
-
-	/* Check for overflow */
-	size_t _res = (size_t) res;
-	if (_res != res)
-		return EOVERFLOW;
-
-	*result = _res;
-
-	return EOK;
 }
 
 void order_suffix(const uint64_t val, uint64_t *rv, char *suffix)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Jaroslav Jindrak
+ * Copyright (c) 2019 Jaroslav Jindrak
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <cassert>
 #include <string>
 
 namespace std
@@ -33,13 +34,14 @@ namespace std
     int stoi(const string& str, size_t* idx, int base)
     {
         // TODO: implement using stol once we have numeric limits
+        __unimplemented();
         return 0;
     }
 
     long stol(const string& str, size_t* idx, int base)
     {
         char* end;
-        long result = hel::strtol(str.c_str(), &end, base);
+        long result = ::strtol(str.c_str(), &end, base);
 
         if (end != str.c_str())
         {
@@ -55,7 +57,7 @@ namespace std
     unsigned long stoul(const string& str, size_t* idx, int base)
     {
         char* end;
-        unsigned long result = hel::strtoul(str.c_str(), &end, base);
+        unsigned long result = ::strtoul(str.c_str(), &end, base);
 
         if (end != str.c_str())
         {
@@ -71,42 +73,42 @@ namespace std
     long long stoll(const string& str, size_t* idx, int base)
     {
         // TODO: implement using stol once we have numeric limits
+        __unimplemented();
         return 0;
     }
 
     unsigned long long stoull(const string& str, size_t* idx, int base)
     {
         // TODO: implement using stoul once we have numeric limits
+        __unimplemented();
         return 0;
     }
 
     float stof(const string& str, size_t* idx)
     {
         // TODO: implement
+        __unimplemented();
         return 0.f;
     }
 
     double stod(const string& str, size_t* idx)
     {
         // TODO: implement
+        __unimplemented();
         return 0.0;
     }
 
     long double stold(const string& str, size_t* idx)
     {
         // TODO: implement
+        __unimplemented();
         return 0.0l;
-    }
-
-    namespace hel
-    {
-        extern "C" int asprintf(char**, const char*, ...);
     }
 
     string to_string(int val)
     {
         char* tmp;
-        hel::asprintf(&tmp, "%d", val);
+        ::asprintf(&tmp, "%d", val);
 
         std::string res{tmp};
         free(tmp);
@@ -117,7 +119,7 @@ namespace std
     string to_string(unsigned val)
     {
         char* tmp;
-        hel::asprintf(&tmp, "%u", val);
+        ::asprintf(&tmp, "%u", val);
 
         std::string res{tmp};
         free(tmp);
@@ -128,7 +130,7 @@ namespace std
     string to_string(long val)
     {
         char* tmp;
-        hel::asprintf(&tmp, "%ld", val);
+        ::asprintf(&tmp, "%ld", val);
 
         std::string res{tmp};
         free(tmp);
@@ -139,7 +141,7 @@ namespace std
     string to_string(unsigned long val)
     {
         char* tmp;
-        hel::asprintf(&tmp, "%lu", val);
+        ::asprintf(&tmp, "%lu", val);
 
         std::string res{tmp};
         free(tmp);
@@ -150,7 +152,7 @@ namespace std
     string to_string(long long val)
     {
         char* tmp;
-        hel::asprintf(&tmp, "%lld", val);
+        ::asprintf(&tmp, "%lld", val);
 
         std::string res{tmp};
         free(tmp);
@@ -161,7 +163,7 @@ namespace std
     string to_string(unsigned long long val)
     {
         char* tmp;
-        hel::asprintf(&tmp, "%llu", val);
+        ::asprintf(&tmp, "%llu", val);
 
         std::string res{tmp};
         free(tmp);
@@ -172,7 +174,7 @@ namespace std
     string to_string(float val)
     {
         char* tmp;
-        hel::asprintf(&tmp, "%f", val);
+        ::asprintf(&tmp, "%f", val);
 
         std::string res{tmp};
         free(tmp);
@@ -183,7 +185,7 @@ namespace std
     string to_string(double val)
     {
         char* tmp;
-        hel::asprintf(&tmp, "%f", val);
+        ::asprintf(&tmp, "%f", val);
 
         std::string res{tmp};
         free(tmp);
@@ -194,7 +196,7 @@ namespace std
     string to_string(long double val)
     {
         char* tmp;
-        hel::asprintf(&tmp, "%Lf", val);
+        ::asprintf(&tmp, "%Lf", val);
 
         std::string res{tmp};
         free(tmp);
@@ -205,102 +207,119 @@ namespace std
     int stoi(const wstring& str, size_t* idx, int base)
     {
         // TODO: implement
+        __unimplemented();
         return 0;
     }
 
     long stol(const wstring& str, size_t* idx, int base)
     {
         // TODO: implement
+        __unimplemented();
         return 0;
     }
 
     unsigned long stoul(const wstring& str, size_t* idx, int base)
     {
         // TODO: implement
+        __unimplemented();
         return 0;
     }
 
     long long stoll(const wstring& str, size_t* idx, int base)
     {
         // TODO: implement
+        __unimplemented();
         return 0;
     }
 
     unsigned long long stoull(const wstring& str, size_t* idx, int base)
     {
         // TODO: implement
+        __unimplemented();
         return 0;
     }
 
     float stof(const wstring& str, size_t* idx)
     {
         // TODO: implement
+        __unimplemented();
         return 0.f;
     }
 
     double stod(const wstring& str, size_t* idx)
     {
         // TODO: implement
+        __unimplemented();
         return 0.0;
     }
 
     long double stold(const wstring& str, size_t* idx)
     {
         // TODO: implement
+        __unimplemented();
         return 0.0l;
     }
 
     wstring to_wstring(int val)
     {
         // TODO: implement
+        __unimplemented();
         return wstring{};
     }
 
     wstring to_wstring(unsigned val)
     {
         // TODO: implement
+        __unimplemented();
         return wstring{};
     }
 
     wstring to_wstring(long val)
     {
         // TODO: implement
+        __unimplemented();
         return wstring{};
     }
 
     wstring to_wstring(unsigned long val)
     {
         // TODO: implement
+        __unimplemented();
         return wstring{};
     }
 
     wstring to_wstring(long long val)
     {
         // TODO: implement
+        __unimplemented();
         return wstring{};
     }
 
     wstring to_wstring(unsigned long long val)
     {
         // TODO: implement
+        __unimplemented();
         return wstring{};
     }
 
     wstring to_wstring(float val)
     {
         // TODO: implement
+        __unimplemented();
         return wstring{};
     }
 
     wstring to_wstring(double val)
     {
         // TODO: implement
+        __unimplemented();
         return wstring{};
     }
 
     wstring to_wstring(long double val)
     {
         // TODO: implement
+        __unimplemented();
         return wstring{};
     }
 

@@ -34,8 +34,8 @@
  * @brief List of all known services and their codes.
  */
 
-#ifndef LIBC_SERVICES_H_
-#define LIBC_SERVICES_H_
+#ifndef _LIBC_SERVICES_H_
+#define _LIBC_SERVICES_H_
 
 #include <abi/fourcc.h>
 
@@ -53,6 +53,7 @@ typedef enum {
 #define SERVICE_NAME_CHARDEV_TEST_PARTIALX "chardev-test/partialx"
 #define SERVICE_NAME_CLIPBOARD "clipboard"
 #define SERVICE_NAME_CORECFG  "corecfg"
+#define SERVICE_NAME_DISPLAY  "hid/display"
 #define SERVICE_NAME_DHCP     "net/dhcp"
 #define SERVICE_NAME_DNSR     "net/dnsr"
 #define SERVICE_NAME_INET     "net/inet"

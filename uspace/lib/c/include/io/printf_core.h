@@ -32,11 +32,12 @@
 /** @file
  */
 
-#ifndef LIBC_PRINTF_CORE_H_
-#define LIBC_PRINTF_CORE_H_
+#ifndef _LIBC_PRINTF_CORE_H_
+#define _LIBC_PRINTF_CORE_H_
 
 #include <stddef.h>
 #include <stdarg.h>
+#include <uchar.h>
 
 /** Structure for specifying output methods for different printf clones. */
 typedef struct {
@@ -44,7 +45,7 @@ typedef struct {
 	int (*str_write)(const char *, size_t, void *);
 
 	/* Wide string output function, returns number of printed characters or EOF */
-	int (*wstr_write)(const wchar_t *, size_t, void *);
+	int (*wstr_write)(const char32_t *, size_t, void *);
 
 	/* User data - output stream specification, state, locks, etc. */
 	void *data;

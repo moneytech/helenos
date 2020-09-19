@@ -42,6 +42,8 @@
 
 #include <stdint.h>
 #include <_bits/wchar_t.h>
+#include <_bits/uchar.h>
+#include <_bits/decls.h>
 
 /*
  * We assume the -helenos target is in use, which means the following assignment:
@@ -310,13 +312,6 @@
 
 #endif
 
-#ifdef _HELENOS_SOURCE
-#define UINT8_MIN   0
-#define UINT16_MIN  0
-#define UINT32_MIN  0
-#define UINT64_MIN  0
-#endif
-
 #define PRIdMAX  "lld"
 #define PRIiMAX  "lli"
 #define PRIoMAX  "llo"
@@ -329,23 +324,29 @@
 #define SCNuMAX  "llu"
 #define SCNxMAX  "llx"
 
-#ifdef __cplusplus
-extern "C" {
+#if defined(_HELENOS_SOURCE) && !defined(__cplusplus)
+#define PRIdn  PRIdPTR  /**< Format for native_t. */
+#define PRIun  PRIuPTR  /**< Format for sysarg_t. */
+#define PRIxn  PRIxPTR  /**< Format for hexadecimal sysarg_t. */
 #endif
+
+__C_DECLS_BEGIN;
 
 typedef struct {
 	intmax_t quot;
 	intmax_t rem;
 } imaxdiv_t;
 
-intmax_t imaxabs(intmax_t);
-imaxdiv_t imaxdiv(intmax_t, intmax_t);
-intmax_t strtoimax(const char *__restrict__, char **__restrict__, int);
-uintmax_t strtoumax(const char *__restrict__, char **__restrict__, int);
+extern intmax_t imaxabs(intmax_t);
+extern imaxdiv_t imaxdiv(intmax_t, intmax_t);
+extern intmax_t strtoimax(const char *__restrict__, char **__restrict__, int);
+extern uintmax_t strtoumax(const char *__restrict__, char **__restrict__, int);
+extern intmax_t wcstoimax(const wchar_t *__restrict__, wchar_t **__restrict__,
+    int);
+extern uintmax_t wcstoumax(const wchar_t *__restrict__, wchar_t **__restrict__,
+    int);
 
-#ifdef __cplusplus
-}
-#endif
+__C_DECLS_END;
 
 #endif
 

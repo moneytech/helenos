@@ -48,7 +48,7 @@ typedef struct {
 	ioport8_t *base;
 } dsrlnout_instance_t;
 
-static void dsrlnout_putwchar(outdev_t *dev, const wchar_t ch)
+static void dsrlnout_putuchar(outdev_t *dev, const char32_t ch)
 {
 	dsrlnout_instance_t *instance = (dsrlnout_instance_t *) dev->data;
 
@@ -61,13 +61,13 @@ static void dsrlnout_putwchar(outdev_t *dev, const wchar_t ch)
 }
 
 static outdev_operations_t dsrlndev_ops = {
-	.write = dsrlnout_putwchar,
+	.write = dsrlnout_putuchar,
 	.redraw = NULL,
 	.scroll_up = NULL,
 	.scroll_down = NULL
 };
 
-outdev_t *dsrlnout_init(ioport8_t *base)
+outdev_t *dsrlnout_init(ioport8_t *base, uintptr_t base_phys)
 {
 	outdev_t *dsrlndev = malloc(sizeof(outdev_t));
 	if (!dsrlndev)
@@ -84,7 +84,7 @@ outdev_t *dsrlnout_init(ioport8_t *base)
 
 	instance->base = base;
 	ddi_parea_init(&instance->parea);
-	instance->parea.pbase = KA2PA(base);
+	instance->parea.pbase = base_phys;
 	instance->parea.frames = 1;
 	instance->parea.unpriv = false;
 	instance->parea.mapped = false;

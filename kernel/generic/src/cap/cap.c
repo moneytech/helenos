@@ -82,33 +82,44 @@
 #include <abi/errno.h>
 #include <mm/slab.h>
 #include <adt/list.h>
+#include <synch/syswaitq.h>
+#include <ipc/ipcrsc.h>
+#include <ipc/ipc.h>
+#include <ipc/irq.h>
 
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 
-#define CAPS_START	(CAP_NIL + 1)
-#define CAPS_SIZE	(INT_MAX - CAPS_START)
+#define CAPS_START	((intptr_t) CAP_NIL + 1)
+#define CAPS_SIZE	(INT_MAX - (int) CAPS_START)
 #define CAPS_LAST	(CAPS_SIZE - 1)
 
 static slab_cache_t *cap_cache;
 static slab_cache_t *kobject_cache;
 
+kobject_ops_t *kobject_ops[KOBJECT_TYPE_MAX] = {
+	[KOBJECT_TYPE_CALL] = &call_kobject_ops,
+	[KOBJECT_TYPE_IRQ] = &irq_kobject_ops,
+	[KOBJECT_TYPE_PHONE] = &phone_kobject_ops,
+	[KOBJECT_TYPE_WAITQ] = &waitq_kobject_ops
+};
+
 static size_t caps_hash(const ht_link_t *item)
 {
 	cap_t *cap = hash_table_get_inst(item, cap_t, caps_link);
-	return hash_mix(CAP_HANDLE_RAW(cap->handle));
+	return hash_mix(cap_handle_raw(cap->handle));
 }
 
-static size_t caps_key_hash(void *key)
+static size_t caps_key_hash(const void *key)
 {
-	cap_handle_t *handle = (cap_handle_t *) key;
-	return hash_mix(CAP_HANDLE_RAW(*handle));
+	const cap_handle_t *handle = key;
+	return hash_mix(cap_handle_raw(*handle));
 }
 
-static bool caps_key_equal(void *key, const ht_link_t *item)
+static bool caps_key_equal(const void *key, const ht_link_t *item)
 {
-	cap_handle_t *handle = (cap_handle_t *) key;
+	const cap_handle_t *handle = key;
 	cap_t *cap = hash_table_get_inst(item, cap_t, caps_link);
 	return *handle == cap->handle;
 }
@@ -231,8 +242,8 @@ static cap_t *cap_get(task_t *task, cap_handle_t handle, cap_state_t state)
 {
 	assert(mutex_locked(&task->cap_info->lock));
 
-	if ((CAP_HANDLE_RAW(handle) < CAPS_START) ||
-	    (CAP_HANDLE_RAW(handle) > CAPS_LAST))
+	if ((cap_handle_raw(handle) < CAPS_START) ||
+	    (cap_handle_raw(handle) > CAPS_LAST))
 		return NULL;
 	ht_link_t *link = hash_table_find(&task->cap_info->caps, &handle);
 	if (!link)
@@ -382,8 +393,8 @@ void cap_revoke(kobject_t *kobj)
  */
 void cap_free(task_t *task, cap_handle_t handle)
 {
-	assert(CAP_HANDLE_RAW(handle) >= CAPS_START);
-	assert(CAP_HANDLE_RAW(handle) <= CAPS_LAST);
+	assert(cap_handle_raw(handle) >= CAPS_START);
+	assert(cap_handle_raw(handle) <= CAPS_LAST);
 
 	mutex_lock(&task->cap_info->lock);
 	cap_t *cap = cap_get(task, handle, CAP_STATE_ALLOCATED);
@@ -391,7 +402,7 @@ void cap_free(task_t *task, cap_handle_t handle)
 	assert(cap);
 
 	hash_table_remove_item(&task->cap_info->caps, &cap->caps_link);
-	ra_free(task->cap_info->handles, CAP_HANDLE_RAW(handle), 1);
+	ra_free(task->cap_info->handles, cap_handle_raw(handle), 1);
 	slab_free(cap_cache, cap);
 	mutex_unlock(&task->cap_info->lock);
 }
@@ -411,10 +422,8 @@ void kobject_free(kobject_t *kobj)
  * @param kobj  Kernel object to initialize.
  * @param type  Type of the kernel object.
  * @param raw   Raw pointer to the encapsulated object.
- * @param ops   Pointer to kernel object operations for the respective type.
  */
-void kobject_initialize(kobject_t *kobj, kobject_type_t type, void *raw,
-    kobject_ops_t *ops)
+void kobject_initialize(kobject_t *kobj, kobject_type_t type, void *raw)
 {
 	atomic_store(&kobj->refcnt, 1);
 
@@ -423,7 +432,6 @@ void kobject_initialize(kobject_t *kobj, kobject_type_t type, void *raw,
 
 	kobj->type = type;
 	kobj->raw = raw;
-	kobj->ops = ops;
 }
 
 /** Get new reference to kernel object from capability
@@ -473,7 +481,7 @@ void kobject_add_ref(kobject_t *kobj)
 void kobject_put(kobject_t *kobj)
 {
 	if (atomic_postdec(&kobj->refcnt) == 1) {
-		kobj->ops->destroy(kobj->raw);
+		KOBJECT_OP(kobj)->destroy(kobj->raw);
 		kobject_free(kobj);
 	}
 }

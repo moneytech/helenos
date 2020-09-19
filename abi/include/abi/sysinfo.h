@@ -33,20 +33,22 @@
  * Data structures passed between kernel sysinfo and user space.
  */
 
-#ifndef ABI_SYSINFO_H_
-#define ABI_SYSINFO_H_
+#ifndef _ABI_SYSINFO_H_
+#define _ABI_SYSINFO_H_
 
 #include <stdbool.h>
 #include <abi/proc/task.h>
 #include <abi/proc/thread.h>
 #include <stdint.h>
 
-/** Number of load components */
-#define LOAD_STEPS  3
+enum {
+	/** Number of load components */
+	LOAD_STEPS = 3,
 
-/** Maximum name sizes */
-#define TASK_NAME_BUFLEN  64
-#define EXC_NAME_BUFLEN   20
+	/** Maximum name sizes */
+	TASK_NAME_BUFLEN = 64,
+	EXC_NAME_BUFLEN  = 20,
+};
 
 /** Item value type
  *
@@ -121,6 +123,14 @@ typedef struct {
 	bool on_cpu;            /**< Associated with a CPU */
 	unsigned int cpu;       /**< Associated CPU ID (if on_cpu is true) */
 } stats_thread_t;
+
+/** Statistics about a single IPC connection
+ *
+ */
+typedef struct {
+	task_id_t caller;  /**< Source task ID */
+	task_id_t callee;  /**< Target task ID */
+} stats_ipcc_t;
 
 /** Statistics about a single exception
  *

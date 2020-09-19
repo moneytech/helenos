@@ -29,18 +29,6 @@
 #ifndef LIBCPP_CERRNO
 #define LIBCPP_CERRNO
 
-#include <__bits/common.hpp>
-
-namespace std::hel
-{
-    extern "C" {
-        #include <errno.h>
-    }
-}
-
-namespace std
-{
-    // Note: Only macros are imported here.
-}
+#include <errno.h>
 
 #endif

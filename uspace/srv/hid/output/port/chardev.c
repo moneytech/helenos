@@ -77,7 +77,7 @@ static void chardev_flush(void)
 	chardev_bused = 0;
 }
 
-static void chardev_putwchar(wchar_t ch)
+static void chardev_putuchar(char32_t ch)
 {
 	if (chardev_bused == chardev_buf_size)
 		chardev_flush();
@@ -92,7 +92,7 @@ static void chardev_control_puts(const char *str)
 
 	p = str;
 	while (*p != '\0')
-		chardev_putwchar(*p++);
+		chardev_putuchar(*p++);
 }
 
 static bool find_output_dev(service_id_t *svcid)
@@ -198,7 +198,7 @@ static void check_for_dev(void *arg)
 		return;
 	}
 
-	serial_init(chardev_putwchar, chardev_control_puts, chardev_flush);
+	serial_init(chardev_putuchar, chardev_control_puts, chardev_flush);
 
 	discovery_finished = true;
 	fibril_condvar_signal(&discovery_cv);
@@ -214,6 +214,8 @@ errno_t chardev_init(void)
 #elif defined(UARCH_sparc64) && defined(PROCESSOR_sun4v)
 		/* OK */
 #elif defined(MACHINE_msim)
+		/* OK */
+#elif defined(UARCH_arm64) && defined(MACHINE_virt)
 		/* OK */
 #else
 		return EOK;

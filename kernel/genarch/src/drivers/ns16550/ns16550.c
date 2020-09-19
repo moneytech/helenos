@@ -38,9 +38,11 @@
 #include <assert.h>
 #include <genarch/drivers/ns16550/ns16550.h>
 #include <ddi/irq.h>
+#include <ddi/ddi.h>
 #include <arch/asm.h>
 #include <console/chardev.h>
 #include <stdlib.h>
+#include <align.h>
 #include <str.h>
 
 #define LSR_DATA_READY  0x01
@@ -109,11 +111,14 @@ static void ns16550_sendb(ns16550_instance_t *instance, uint8_t byte)
 	ns16550_reg_write(instance, NS16550_REG_THR, byte);
 }
 
-static void ns16550_putwchar(outdev_t *dev, wchar_t ch)
+static void ns16550_putuchar(outdev_t *dev, char32_t ch)
 {
 	ns16550_instance_t *instance = (ns16550_instance_t *) dev->data;
 
 	if ((!instance->parea.mapped) || (console_override)) {
+		if (ch == '\n')
+			ns16550_sendb(instance, '\r');
+
 		if (ascii_check(ch))
 			ns16550_sendb(instance, (uint8_t) ch);
 		else
@@ -122,7 +127,7 @@ static void ns16550_putwchar(outdev_t *dev, wchar_t ch)
 }
 
 static outdev_operations_t ns16550_ops = {
-	.write = ns16550_putwchar,
+	.write = ns16550_putuchar,
 	.redraw = NULL
 };
 
@@ -142,11 +147,13 @@ static outdev_operations_t ns16550_ops = {
  * @return Keyboard instance or NULL on failure.
  *
  */
-ns16550_instance_t *ns16550_init(ioport8_t *dev, unsigned reg_shift, inr_t inr,
-    cir_t cir, void *cir_arg, outdev_t **output)
+ns16550_instance_t *ns16550_init(ioport8_t *dev_phys, unsigned reg_shift,
+    inr_t inr, cir_t cir, void *cir_arg, outdev_t **output)
 {
-	ns16550_instance_t *instance =
-	    malloc(sizeof(ns16550_instance_t));
+	size_t size = 6 * (1U << reg_shift);
+	ioport8_t *dev = pio_map((void *) dev_phys, size);
+
+	ns16550_instance_t *instance = malloc(sizeof(ns16550_instance_t));
 	if (instance) {
 		instance->ns16550 = dev;
 		instance->reg_shift = reg_shift;
@@ -157,6 +164,8 @@ ns16550_instance_t *ns16550_init(ioport8_t *dev, unsigned reg_shift, inr_t inr,
 			instance->output = malloc(sizeof(outdev_t));
 			if (!instance->output) {
 				free(instance);
+				pio_unmap((void *) dev_phys, (void *) dev,
+				    size);
 				return NULL;
 			}
 
@@ -175,8 +184,9 @@ ns16550_instance_t *ns16550_init(ioport8_t *dev, unsigned reg_shift, inr_t inr,
 		instance->irq.cir_arg = cir_arg;
 
 		ddi_parea_init(&instance->parea);
-		instance->parea.pbase = (uintptr_t) dev;
-		instance->parea.frames = 1;
+		instance->parea.pbase = ALIGN_DOWN((uintptr_t) dev_phys,
+		    PAGE_SIZE);
+		instance->parea.frames = ALIGN_UP(size, PAGE_SIZE);
 		instance->parea.unpriv = false;
 		instance->parea.mapped = false;
 		ddi_parea_register(&instance->parea);

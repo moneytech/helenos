@@ -222,7 +222,7 @@ static void code_free(irq_code_t *code)
  * @return Kernel address of the copied IRQ code.
  *
  */
-static irq_code_t *code_from_uspace(irq_code_t *ucode)
+static irq_code_t *code_from_uspace(uspace_ptr_irq_code_t ucode)
 {
 	irq_pio_range_t *ranges = NULL;
 	irq_cmd_t *cmds = NULL;
@@ -241,7 +241,7 @@ static irq_code_t *code_from_uspace(irq_code_t *ucode)
 	ranges = malloc(sizeof(code->ranges[0]) * code->rangecount);
 	if (!ranges)
 		goto error;
-	rc = copy_from_uspace(ranges, code->ranges,
+	rc = copy_from_uspace(ranges, (uintptr_t) code->ranges,
 	    sizeof(code->ranges[0]) * code->rangecount);
 	if (rc != EOK)
 		goto error;
@@ -249,7 +249,7 @@ static irq_code_t *code_from_uspace(irq_code_t *ucode)
 	cmds = malloc(sizeof(code->cmds[0]) * code->cmdcount);
 	if (!cmds)
 		goto error;
-	rc = copy_from_uspace(cmds, code->cmds,
+	rc = copy_from_uspace(cmds, (uintptr_t) code->cmds,
 	    sizeof(code->cmds[0]) * code->cmdcount);
 	if (rc != EOK)
 		goto error;
@@ -305,7 +305,7 @@ static void irq_destroy(void *arg)
 	slab_free(irq_cache, irq);
 }
 
-static kobject_ops_t irq_kobject_ops = {
+kobject_ops_t irq_kobject_ops = {
 	.destroy = irq_destroy
 };
 
@@ -322,7 +322,7 @@ static kobject_ops_t irq_kobject_ops = {
  *
  */
 errno_t ipc_irq_subscribe(answerbox_t *box, inr_t inr, sysarg_t imethod,
-    irq_code_t *ucode, cap_irq_handle_t *uspace_handle)
+    uspace_ptr_irq_code_t ucode, uspace_ptr_cap_irq_handle_t uspace_handle)
 {
 	if ((inr < 0) || (inr > last_inr))
 		return ELIMIT;
@@ -384,7 +384,7 @@ errno_t ipc_irq_subscribe(answerbox_t *box, inr_t inr, sysarg_t imethod,
 	irq_spinlock_unlock(&irq->lock, false);
 	irq_spinlock_unlock(&irq_uspace_hash_table_lock, true);
 
-	kobject_initialize(kobject, KOBJECT_TYPE_IRQ, irq, &irq_kobject_ops);
+	kobject_initialize(kobject, KOBJECT_TYPE_IRQ, irq);
 	cap_publish(TASK, handle, kobject);
 
 	return EOK;
@@ -538,12 +538,12 @@ void ipc_irq_top_half_handler(irq_t *irq)
 		call->priv = ++irq->notif_cfg.counter;
 
 		/* Set up args */
-		IPC_SET_IMETHOD(call->data, irq->notif_cfg.imethod);
-		IPC_SET_ARG1(call->data, irq->notif_cfg.scratch[1]);
-		IPC_SET_ARG2(call->data, irq->notif_cfg.scratch[2]);
-		IPC_SET_ARG3(call->data, irq->notif_cfg.scratch[3]);
-		IPC_SET_ARG4(call->data, irq->notif_cfg.scratch[4]);
-		IPC_SET_ARG5(call->data, irq->notif_cfg.scratch[5]);
+		ipc_set_imethod(&call->data, irq->notif_cfg.imethod);
+		ipc_set_arg1(&call->data, irq->notif_cfg.scratch[1]);
+		ipc_set_arg2(&call->data, irq->notif_cfg.scratch[2]);
+		ipc_set_arg3(&call->data, irq->notif_cfg.scratch[3]);
+		ipc_set_arg4(&call->data, irq->notif_cfg.scratch[4]);
+		ipc_set_arg5(&call->data, irq->notif_cfg.scratch[5]);
 
 		send_call(irq, call);
 	}
@@ -575,12 +575,12 @@ void ipc_irq_send_msg(irq_t *irq, sysarg_t a1, sysarg_t a2, sysarg_t a3,
 		/* Put a counter to the message */
 		call->priv = ++irq->notif_cfg.counter;
 
-		IPC_SET_IMETHOD(call->data, irq->notif_cfg.imethod);
-		IPC_SET_ARG1(call->data, a1);
-		IPC_SET_ARG2(call->data, a2);
-		IPC_SET_ARG3(call->data, a3);
-		IPC_SET_ARG4(call->data, a4);
-		IPC_SET_ARG5(call->data, a5);
+		ipc_set_imethod(&call->data, irq->notif_cfg.imethod);
+		ipc_set_arg1(&call->data, a1);
+		ipc_set_arg2(&call->data, a2);
+		ipc_set_arg3(&call->data, a3);
+		ipc_set_arg4(&call->data, a4);
+		ipc_set_arg5(&call->data, a5);
 
 		send_call(irq, call);
 	}

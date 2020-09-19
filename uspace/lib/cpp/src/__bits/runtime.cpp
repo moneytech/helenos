@@ -27,10 +27,13 @@
  */
 
 #include <__bits/abi.hpp>
+#include <cassert>
 #include <cstdlib>
 #include <cstdint>
 #include <exception>
 #include <mutex>
+
+void* __dso_handle = nullptr;
 
 namespace __cxxabiv1
 {
@@ -66,6 +69,13 @@ namespace __cxxabiv1
     {
         std::terminate();
     }
+
+#ifdef __arm__
+    extern "C" int __aeabi_atexit(void* p, void (*f)(void*), void* d)
+    {
+        return __cxa_atexit(f, p, d);
+    }
+#endif
 
     extern "C" int __cxa_atexit(void (*f)(void*), void* p, void* d)
     {
@@ -197,4 +207,11 @@ namespace __cxxabiv1
     // Needed on arm.
     extern "C" void __cxa_end_cleanup()
     { /* DUMMY BODY */ }
+
+    extern "C" int __cxa_thread_atexit(void(*)(void*), void*, void*)
+    {
+        // TODO: needed for thread_local variables
+        __unimplemented();
+        return 0;
+    }
 }
